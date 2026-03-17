@@ -50,6 +50,10 @@ type healthResponse struct {
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	path := r.PathValue("path")
 	if path == "" {
+		// UI requires auth; redirects do not
+		if !s.checkAuth(w, r) {
+			return
+		}
 		s.handleUI(w, r)
 		return
 	}

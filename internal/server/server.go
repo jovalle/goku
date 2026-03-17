@@ -9,25 +9,35 @@ import (
 	"github.com/jovalle/goku/internal/store"
 )
 
+// AuthConfig holds authentication credentials.
+type AuthConfig struct {
+	Username string
+	Password string
+	APIKey   string
+}
+
 // Server is the goku HTTP server.
 type Server struct {
 	store      *store.LinkStore
 	logger     *slog.Logger
 	configPath string
+	auth       AuthConfig
 	handler    http.Handler
 	mux        *http.ServeMux
 }
 
 // New creates a Server and wires all routes and middleware.
-func New(s *store.LinkStore, logger *slog.Logger, configPath string) *Server {
+func New(s *store.LinkStore, logger *slog.Logger, configPath string, auth AuthConfig) *Server {
 	srv := &Server{
 		store:      s,
 		logger:     logger,
 		configPath: configPath,
+		auth:       auth,
 		mux:        http.NewServeMux(),
 	}
 	srv.routes()
 
+	// Build the middleware chain once (outermost runs first)
 	srv.handler = chain(srv.mux,
 		RecoveryMiddleware(logger),
 		LoggingMiddleware(logger),
@@ -44,13 +54,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
+	// Public: health check (for load balancers) and redirects
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
-	s.mux.Handle("GET /metrics", promhttp.Handler())
-	s.mux.HandleFunc("GET /api/links", s.handleListLinks)
-	s.mux.HandleFunc("POST /api/links", s.handleAddLink)
-	s.mux.HandleFunc("POST /api/links/{name}/delete", s.handleDeleteLink)
-	s.mux.HandleFunc("POST /api/rules", s.handleAddRule)
-	s.mux.HandleFunc("POST /api/rules/{name}/delete", s.handleDeleteRule)
+
+	// Protected: metrics, UI, and API
+	protected := s.requireAuth
+	s.mux.Handle("GET /metrics", protected(promhttp.Handler()))
+	s.mux.Handle("GET /api/links", protected(http.HandlerFunc(s.handleListLinks)))
+	s.mux.Handle("POST /api/links", protected(http.HandlerFunc(s.handleAddLink)))
+	s.mux.Handle("POST /api/links/{name}/delete", protected(http.HandlerFunc(s.handleDeleteLink)))
+	s.mux.Handle("POST /api/rules", protected(http.HandlerFunc(s.handleAddRule)))
+	s.mux.Handle("POST /api/rules/{name}/delete", protected(http.HandlerFunc(s.handleDeleteRule)))
+
+	// Root: UI (protected) or redirect (public)
 	s.mux.HandleFunc("GET /{path...}", s.handleRoot)
 }
 

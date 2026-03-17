@@ -9,11 +9,15 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -63,8 +67,44 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	metrics.LinksTotal.Set(float64(len(cfg.Links)))
 	metrics.RulesTotal.Set(float64(len(cfg.Rules)))
 
+	auth := server.AuthConfig{
+		Username: getEnv("GOKU_ADMIN_USERNAME", "admin"),
+		Password: getEnv("GOKU_ADMIN_PASSWORD", ""),
+		APIKey:   getEnv("GOKU_API_KEY", ""),
+	}
+
+	// Priority: env var > key file > generate new key
+	keyPath := filepath.Join(filepath.Dir(configPath), ".api_key")
+	switch {
+	case auth.APIKey != "":
+		logger.Info("using API key from environment")
+	default:
+		if data, err := os.ReadFile(keyPath); err == nil {
+			if key := strings.TrimSpace(string(data)); key != "" {
+				auth.APIKey = key
+				logger.Info("using API key from file", "path", keyPath)
+			}
+		}
+		if auth.APIKey == "" {
+			b := make([]byte, 24)
+			if _, err := rand.Read(b); err != nil {
+				return fmt.Errorf("generating API key: %w", err)
+			}
+			auth.APIKey = hex.EncodeToString(b)
+			if err := os.WriteFile(keyPath, []byte(auth.APIKey+"\n"), 0600); err != nil {
+				return fmt.Errorf("saving API key file: %w", err)
+			}
+			logger.Info("generated and saved new API key", "path", keyPath)
+		}
+	}
+	logger.Info("API key", "key", auth.APIKey)
+
+	if auth.Password == "" {
+		logger.Warn("GOKU_ADMIN_PASSWORD not set - UI and API are unprotected")
+	}
+
 	s := store.New(cfg)
-	srv := server.New(s, logger, configPath)
+	srv := server.New(s, logger, configPath, auth)
 
 	httpServer := &http.Server{
 		Addr:              addr,

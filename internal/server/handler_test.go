@@ -23,10 +23,20 @@ func newTestServer(t *testing.T, cfg model.Config) *Server {
 	os.WriteFile(cfgPath, []byte("links: {}"), 0644)
 	s := store.New(cfg)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return New(s, logger, cfgPath)
+	return New(s, logger, cfgPath, AuthConfig{})
 }
 
-// Health
+func newAuthServer(t *testing.T, cfg model.Config, auth AuthConfig) *Server {
+	t.Helper()
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	os.WriteFile(cfgPath, []byte("links: {}"), 0644)
+	s := store.New(cfg)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return New(s, logger, cfgPath, auth)
+}
+
+// ── Health ───────────────────────────────────────────────────
 
 func TestHandleHealth(t *testing.T) {
 	srv := newTestServer(t, model.Config{
@@ -51,7 +61,7 @@ func TestHandleHealth(t *testing.T) {
 	}
 }
 
-// Redirects
+// ── Redirects ────────────────────────────────────────────────
 
 func TestHandleRedirect_ExactLink(t *testing.T) {
 	srv := newTestServer(t, model.Config{
@@ -116,7 +126,7 @@ func TestHandleRedirect_NotFound(t *testing.T) {
 	}
 }
 
-// API: List Links
+// ── API: List Links ──────────────────────────────────────────
 
 func TestHandleListLinks(t *testing.T) {
 	srv := newTestServer(t, model.Config{
@@ -138,7 +148,7 @@ func TestHandleListLinks(t *testing.T) {
 	}
 }
 
-// API: Add Link
+// ── API: Add Link ────────────────────────────────────────────
 
 func TestHandleAddLink(t *testing.T) {
 	srv := newTestServer(t, model.Config{})
@@ -153,6 +163,7 @@ func TestHandleAddLink(t *testing.T) {
 		t.Fatalf("status = %d, want 303", w.Code)
 	}
 
+	// Verify redirect works now
 	req2 := httptest.NewRequest("GET", "/docs", nil)
 	w2 := httptest.NewRecorder()
 	srv.ServeHTTP(w2, req2)
@@ -184,7 +195,7 @@ func TestHandleAddLink_MissingFields(t *testing.T) {
 	}
 }
 
-// API: Delete Link
+// ── API: Delete Link ─────────────────────────────────────────
 
 func TestHandleDeleteLink(t *testing.T) {
 	srv := newTestServer(t, model.Config{
@@ -206,7 +217,7 @@ func TestHandleDeleteLink(t *testing.T) {
 	}
 }
 
-// API: Add Rule
+// ── API: Add Rule ────────────────────────────────────────────
 
 func TestHandleAddRule(t *testing.T) {
 	srv := newTestServer(t, model.Config{})
@@ -255,7 +266,7 @@ func TestHandleAddRule_InvalidType(t *testing.T) {
 	}
 }
 
-// API: Delete Rule
+// ── API: Delete Rule ─────────────────────────────────────────
 
 func TestHandleDeleteRule(t *testing.T) {
 	srv := newTestServer(t, model.Config{
@@ -269,5 +280,68 @@ func TestHandleDeleteRule(t *testing.T) {
 
 	if w.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", w.Code)
+	}
+}
+
+// ── Auth: health and redirects stay public ───────────────────
+
+func TestHealthz_PublicEvenWithAuth(t *testing.T) {
+	srv := newAuthServer(t, model.Config{}, AuthConfig{
+		Username: "admin", Password: "secret", APIKey: "test-key",
+	})
+	req := httptest.NewRequest("GET", "/healthz", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("healthz should be public, got %d", w.Code)
+	}
+}
+
+func TestRedirects_PublicEvenWithAuth(t *testing.T) {
+	srv := newAuthServer(t, model.Config{
+		Links: map[string]string{"gh": "https://github.com"},
+	}, AuthConfig{Username: "admin", Password: "secret", APIKey: "test-key"})
+
+	req := httptest.NewRequest("GET", "/gh", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("redirect should be public, got %d", w.Code)
+	}
+}
+
+// ── Auth: protected endpoints ────────────────────────────────
+
+func TestAPI_RequiresAuth(t *testing.T) {
+	srv := newAuthServer(t, model.Config{
+		Links: map[string]string{"gh": "https://github.com"},
+	}, AuthConfig{Username: "admin", Password: "secret", APIKey: "test-key"})
+
+	for _, path := range []string{"/api/links", "/metrics"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", path, nil)
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+			if w.Code != http.StatusUnauthorized {
+				t.Errorf("status = %d, want 401", w.Code)
+			}
+		})
+	}
+}
+
+func TestAPI_WithBearerToken(t *testing.T) {
+	srv := newAuthServer(t, model.Config{
+		Links: map[string]string{"gh": "https://github.com"},
+	}, AuthConfig{APIKey: "test-key"})
+
+	req := httptest.NewRequest("GET", "/api/links", nil)
+	req.Header.Set("Authorization", "Bearer test-key")
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", w.Code)
 	}
 }
