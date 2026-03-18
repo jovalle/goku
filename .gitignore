@@ -31,5 +31,17 @@ go.work.sum
 # .idea/
 # .vscode/
 
+# Binaries
+bin/
+
 # API key
 .api_key
+
+# OS
+.DS_Store
+
+# Temporary files
+*.tmp
+
+# Build script
+write_files.py
