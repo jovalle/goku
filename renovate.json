@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    "group:allNonMajor"
+  ],
+  "labels": ["dependencies"],
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["major"],
+      "commitMessagePrefix": "fix(deps)!:"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "go dependencies (non-major)",
+      "commitMessagePrefix": "fix(deps):"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "commitMessagePrefix": "ci(deps):"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker base images",
+      "commitMessagePrefix": "fix(deps):"
+    }
+  ]
+}
