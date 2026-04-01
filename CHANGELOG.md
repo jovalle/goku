@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/jovalle/goku/compare/v1.0.0...v1.1.0) (2026-04-01)
+
+
+### Features
+
+* add pre-commit hook for running tests and update README with installation instructions ([ba687cf](https://github.com/jovalle/goku/commit/ba687cf6ac29d8ed52db0ce128d847930499e975))
+* enhance config loading to return default values for missing files ([ba687cf](https://github.com/jovalle/goku/commit/ba687cf6ac29d8ed52db0ce128d847930499e975))
+* improve link and rule deletion handlers to support form submissions ([ba687cf](https://github.com/jovalle/goku/commit/ba687cf6ac29d8ed52db0ce128d847930499e975))
+
+
+### Bug Fixes
+
+* update middleware to clarify auth requirements and adjust tests accordingly ([ba687cf](https://github.com/jovalle/goku/commit/ba687cf6ac29d8ed52db0ce128d847930499e975))
+
 ## 1.0.0 (2026-03-26)
 
 
