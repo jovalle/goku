@@ -48,9 +48,21 @@ func TestLoad_EmptyFile(t *testing.T) {
 }
 
 func TestLoad_MissingFile(t *testing.T) {
-	_, err := Load("/tmp/nonexistent-goku-test-config.yaml")
-	if err == nil {
-		t.Error("expected error for missing file")
+	cfg, err := Load(filepath.Join(t.TempDir(), "missing.yaml"))
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.Links == nil {
+		t.Error("Links should default to a non-nil map for missing files")
+	}
+	if cfg.Rules == nil {
+		t.Error("Rules should default to a non-nil slice for missing files")
+	}
+	if len(cfg.Links) != 0 {
+		t.Errorf("expected no links for missing file, got %d", len(cfg.Links))
+	}
+	if len(cfg.Rules) != 0 {
+		t.Errorf("expected no rules for missing file, got %d", len(cfg.Rules))
 	}
 }
 

@@ -38,6 +38,9 @@ cover:
   @echo ""
   @echo "To open in browser: go tool cover -html=coverage.out"
 
+install-hooks:
+  git config core.hooksPath .githooks
+
 build:
   go build -ldflags="-X main.version={{version}} -X main.commit={{commit}} -X main.date={{date}}" \
     -o bin/goku ./cmd/goku

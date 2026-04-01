@@ -217,6 +217,26 @@ func TestHandleDeleteLink(t *testing.T) {
 	}
 }
 
+func TestHandleDeleteLink_WithSlashName(t *testing.T) {
+	srv := newTestServer(t, model.Config{
+		Links: map[string]string{"go/goog": "https://google.com"},
+	})
+
+	form := url.Values{"name": {"go/goog"}}
+	req := httptest.NewRequest("POST", "/api/links/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", w.Code)
+	}
+
+	if _, ok := srv.store.Links()["go/goog"]; ok {
+		t.Fatal("expected link with slash in name to be deleted")
+	}
+}
+
 // ── API: Add Rule ────────────────────────────────────────────
 
 func TestHandleAddRule(t *testing.T) {
@@ -283,6 +303,28 @@ func TestHandleDeleteRule(t *testing.T) {
 	}
 }
 
+func TestHandleDeleteRule_WithFormName(t *testing.T) {
+	srv := newTestServer(t, model.Config{
+		Rules: []model.Rule{
+			{Name: "team/core", Type: "prefix", Pattern: "r", Redirect: "https://www.reddit.com/r"},
+		},
+	})
+
+	form := url.Values{"name": {"team/core"}}
+	req := httptest.NewRequest("POST", "/api/rules/delete", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", w.Code)
+	}
+
+	if got := len(srv.store.Rules()); got != 0 {
+		t.Fatalf("expected rule to be deleted, still have %d rules", got)
+	}
+}
+
 // ── Auth: health and redirects stay public ───────────────────
 
 func TestHealthz_PublicEvenWithAuth(t *testing.T) {
@@ -334,7 +376,7 @@ func TestAPI_RequiresAuth(t *testing.T) {
 func TestAPI_WithBearerToken(t *testing.T) {
 	srv := newAuthServer(t, model.Config{
 		Links: map[string]string{"gh": "https://github.com"},
-	}, AuthConfig{APIKey: "test-key"})
+	}, AuthConfig{Password: "secret", APIKey: "test-key"})
 
 	req := httptest.NewRequest("GET", "/api/links", nil)
 	req.Header.Set("Authorization", "Bearer test-key")
@@ -343,5 +385,22 @@ func TestAPI_WithBearerToken(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("status = %d, want 200", w.Code)
+	}
+}
+
+func TestUIAndAPI_PublicWhenOnlyAPIKeyConfigured(t *testing.T) {
+	srv := newAuthServer(t, model.Config{
+		Links: map[string]string{"gh": "https://github.com"},
+	}, AuthConfig{APIKey: "test-key"})
+
+	for _, path := range []string{"/", "/api/links", "/metrics"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest("GET", path, nil)
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+			if w.Code == http.StatusUnauthorized {
+				t.Fatalf("status = %d, want endpoint to stay public without admin password", w.Code)
+			}
+		})
 	}
 }

@@ -136,7 +136,7 @@ func TestCheckAuth_NoAuthConfigured(t *testing.T) {
 }
 
 func TestCheckAuth_BearerToken_Valid(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{APIKey: "test-key-123"})
+	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
 	req := httptest.NewRequest("GET", "/api/links", nil)
 	req.Header.Set("Authorization", "Bearer test-key-123")
 	w := httptest.NewRecorder()
@@ -146,7 +146,7 @@ func TestCheckAuth_BearerToken_Valid(t *testing.T) {
 }
 
 func TestCheckAuth_BearerToken_Invalid(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{APIKey: "test-key-123"})
+	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
 	req := httptest.NewRequest("GET", "/api/links", nil)
 	req.Header.Set("Authorization", "Bearer wrong-key")
 	w := httptest.NewRecorder()
@@ -197,6 +197,18 @@ func TestCheckAuth_NoCreds(t *testing.T) {
 	}
 	if w.Header().Get("WWW-Authenticate") == "" {
 		t.Error("expected WWW-Authenticate header")
+	}
+}
+
+func TestCheckAuth_APIKeyAloneDoesNotEnableAuth(t *testing.T) {
+	srv := newAuthServer(t, model.Config{}, AuthConfig{APIKey: "test-key-123"})
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	if !srv.checkAuth(w, req) {
+		t.Error("checkAuth should return true when only an API key is configured")
+	}
+	if w.Header().Get("WWW-Authenticate") != "" {
+		t.Error("did not expect WWW-Authenticate header when auth is disabled")
 	}
 }
 

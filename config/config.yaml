@@ -1,29 +1,29 @@
 links:
-  g: https://www.google.com
-  gh: https://github.com
-  gh3: https://github.com/jovalle
-  jay: https://jayovalle.com
-  jpmc: https://jpmorganchase.com
-  r: https://www.reddit.com
-  yc: https://news.ycombinator.com
+    g: https://www.google.com
+    gh: https://github.com
+    gh3: https://github.com/jovalle
+    jay: https://jayovalle.com
+    jpmc: https://jpmorganchase.com
+    r: https://www.reddit.com
+    yc: https://news.ycombinator.com
 rules:
-  - name: reddit
-    type: prefix
-    pattern: r
-    redirect: https://www.reddit.com/r
-  - name: github
-    type: template
-    pattern: gh/{owner}/{name}
-    redirect: https://github.com/{owner}/{name}
-  - name: wikipedia
-    type: template
-    pattern: wiki/{topic}
-    redirect: https://en.wikipedia.org/wiki/{topic}
-  - name: youtube
-    type: template
-    pattern: yt/{query}
-    redirect: https://www.youtube.com/results?search_query={query}
-  - name: twitter
-    type: template
-    pattern: t/{user}
-    redirect: https://x.com/{user}
+    - name: reddit
+      type: prefix
+      pattern: r
+      redirect: https://www.reddit.com/r
+    - name: github
+      type: template
+      pattern: gh/{owner}/{name}
+      redirect: https://github.com/{owner}/{name}
+    - name: wikipedia
+      type: template
+      pattern: wiki/{topic}
+      redirect: https://en.wikipedia.org/wiki/{topic}
+    - name: youtube
+      type: template
+      pattern: yt/{query}
+      redirect: https://www.youtube.com/results?search_query={query}
+    - name: twitter
+      type: template
+      pattern: t/{user}
+      redirect: https://x.com/{user}

@@ -89,9 +89,11 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// authEnabled returns true if any auth credentials are configured.
+// authEnabled returns true when admin protection is enabled.
+// An API key alone does not turn on auth; it acts as an alternate credential
+// once a password has enabled protection for the UI and API.
 func (s *Server) authEnabled() bool {
-	return s.auth.APIKey != "" || s.auth.Password != ""
+	return s.auth.Password != ""
 }
 
 // requireAuth wraps a handler so it requires authentication.

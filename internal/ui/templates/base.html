@@ -189,7 +189,8 @@
             <td><span class="shortname">go/{{ .Name }}</span></td>
             <td><a href="{{ .URL }}" target="_blank" rel="noopener">{{ .URL }}</a></td>
             <td>
-              <form method="POST" action="/api/links/{{ .Name }}/delete" style="display: inline">
+              <form method="POST" action="/api/links/delete" style="display: inline">
+                <input type="hidden" name="name" value="{{ .Name }}" />
                 <button class="delete-btn" type="submit" title="Delete">&#x2715;</button>
               </form>
             </td>
@@ -242,7 +243,8 @@
             <td><span class="shortname">go/{{ .Pattern }}</span></td>
             <td><a href="{{ .Redirect }}" target="_blank" rel="noopener">{{ .Redirect }}</a></td>
             <td>
-              <form method="POST" action="/api/rules/{{ .Name }}/delete" style="display: inline">
+              <form method="POST" action="/api/rules/delete" style="display: inline">
+                <input type="hidden" name="name" value="{{ .Name }}" />
                 <button class="delete-btn" type="submit" title="Delete">&#x2715;</button>
               </form>
             </td>

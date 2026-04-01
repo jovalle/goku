@@ -62,8 +62,10 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /metrics", protected(promhttp.Handler()))
 	s.mux.Handle("GET /api/links", protected(http.HandlerFunc(s.handleListLinks)))
 	s.mux.Handle("POST /api/links", protected(http.HandlerFunc(s.handleAddLink)))
+	s.mux.Handle("POST /api/links/delete", protected(http.HandlerFunc(s.handleDeleteLink)))
 	s.mux.Handle("POST /api/links/{name}/delete", protected(http.HandlerFunc(s.handleDeleteLink)))
 	s.mux.Handle("POST /api/rules", protected(http.HandlerFunc(s.handleAddRule)))
+	s.mux.Handle("POST /api/rules/delete", protected(http.HandlerFunc(s.handleDeleteRule)))
 	s.mux.Handle("POST /api/rules/{name}/delete", protected(http.HandlerFunc(s.handleDeleteRule)))
 
 	// Root: UI (protected) or redirect (public)

@@ -10,8 +10,15 @@ import (
 )
 
 // Load reads and parses a YAML config file.
+// If the file does not exist, it returns a default empty config.
 func Load(path string) (model.Config, error) {
 	f, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return model.Config{
+			Links: make(map[string]string),
+			Rules: []model.Rule{},
+		}, nil
+	}
 	if err != nil {
 		return model.Config{}, fmt.Errorf("opening config %s: %w", path, err)
 	}

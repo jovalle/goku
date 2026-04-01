@@ -120,6 +120,13 @@ func (s *Server) handleAddLink(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteLink(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
+	if name == "" {
+		name = r.FormValue("name")
+	}
+	if name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
 
 	cfg := s.store.DeleteLink(name)
 	if err := config.Save(s.configPath, cfg); err != nil {
@@ -163,6 +170,13 @@ func (s *Server) handleAddRule(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
+	if name == "" {
+		name = r.FormValue("name")
+	}
+	if name == "" {
+		http.Error(w, "name required", http.StatusBadRequest)
+		return
+	}
 
 	cfg := s.store.DeleteRule(name)
 	if err := config.Save(s.configPath, cfg); err != nil {

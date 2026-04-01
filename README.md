@@ -24,6 +24,16 @@ go run ./cmd/goku
 
 Visit `http://localhost:9001` for the management UI.
 
+## Local Development
+
+Install the tracked git hooks once per clone:
+
+```bash
+just install-hooks
+```
+
+That configures Git to use `.githooks/pre-commit`, which runs `go test -race -coverprofile=coverage.out ./...` before each commit so CI-style test failures are caught locally.
+
 ## Features
 
 - **Golinks** — `go/gh` → GitHub, `go/g` → Google
