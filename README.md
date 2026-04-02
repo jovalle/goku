@@ -1,5 +1,5 @@
 <div align="center">
-  <img src=".github/logo.png" alt="Goku" width="200" />
+  <img src=".github/assets/logo.png" alt="Goku" width="200" />
   <h1>goku</h1>
   <p><em>Enlightenment (悟 → `go`) through the (homelab) void (空 → `ku`)</em></p>
   <p>A golinks solution written in Go.</p>
