@@ -34,17 +34,15 @@ var (
 		Help: "Total number of config reloads.",
 	})
 
-	// LinksTotal shows the current link count.
-	LinksTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "goku_links_configured",
-		Help: "Current number of configured links.",
+	// AliasesTotal shows the current alias count.
+	AliasesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "goku_aliases_configured",
+		Help: "Current number of configured aliases.",
 	})
 
-	// RulesTotal shows the current rule count.
-	RulesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "goku_rules_configured",
-		Help: "Current number of configured rules.",
-	})
+	// Backward-compatible aliases; all now mirror aliases count.
+	LinksTotal = AliasesTotal
+	RulesTotal = AliasesTotal
 )
 
 // Register registers all goku metrics with Prometheus.
@@ -54,7 +52,6 @@ func Register() {
 		RequestDuration,
 		ResolveErrors,
 		ConfigReloads,
-		LinksTotal,
-		RulesTotal,
+		AliasesTotal,
 	)
 }

@@ -87,7 +87,6 @@ func reload(path string, updater Updater, logger *slog.Logger) {
 
 	updater.Update(cfg)
 	logger.Info("config reloaded",
-		"links", len(cfg.Links),
-		"rules", len(cfg.Rules),
+		"aliases", len(cfg.Aliases),
 	)
 }

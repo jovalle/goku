@@ -7,7 +7,12 @@ type Resolver interface {
 	Resolve(path string) (string, error)
 }
 
-// LinkLister provides read access to links and rules (for the UI).
+// AliasLister provides read access to aliases (for UI and APIs).
+type AliasLister interface {
+	Aliases() []model.Alias
+}
+
+// LinkLister provides legacy read access to links and rules.
 type LinkLister interface {
 	Links() map[string]string
 	Rules() []model.Rule

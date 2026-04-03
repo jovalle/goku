@@ -272,3 +272,52 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestResolve_DisabledAliasIsIgnored(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(false)}},
+	})
+
+	_, err := s.Resolve("gh")
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for disabled alias, got %v", err)
+	}
+}
+
+func TestSetAliasEnabled(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com"}},
+	})
+
+	if _, err := s.SetAliasEnabled("gh", false); err != nil {
+		t.Fatalf("SetAliasEnabled disable failed: %v", err)
+	}
+	if _, err := s.Resolve("gh"); !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("expected disabled alias to stop resolving, got %v", err)
+	}
+
+	if _, err := s.SetAliasEnabled("gh", true); err != nil {
+		t.Fatalf("SetAliasEnabled enable failed: %v", err)
+	}
+	if got, err := s.Resolve("gh"); err != nil || got != "https://github.com" {
+		t.Fatalf("expected resolved destination after re-enable, got %q, err=%v", got, err)
+	}
+}
+
+func TestUpdateAlias(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{{Alias: "docs", Destination: "https://docs.example.com"}},
+	})
+
+	_, err := s.UpdateAlias("docs", "docs2", "https://docs2.example.com", false)
+	if err != nil {
+		t.Fatalf("UpdateAlias failed: %v", err)
+	}
+
+	if _, err := s.Resolve("docs"); !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("old alias should not resolve after rename, got %v", err)
+	}
+	if _, err := s.Resolve("docs2"); !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("renamed alias is disabled and should not resolve, got %v", err)
+	}
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -15,8 +16,9 @@ func Load(path string) (model.Config, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
 		return model.Config{
-			Links: make(map[string]string),
-			Rules: []model.Rule{},
+			Aliases: []model.Alias{},
+			Links:   map[string]string{},
+			Rules:   []model.Rule{},
 		}, nil
 	}
 	if err != nil {
@@ -29,6 +31,9 @@ func Load(path string) (model.Config, error) {
 		return model.Config{}, fmt.Errorf("parsing config %s: %w", path, err)
 	}
 
+	if cfg.Aliases == nil {
+		cfg.Aliases = []model.Alias{}
+	}
 	if cfg.Links == nil {
 		cfg.Links = make(map[string]string)
 	}
@@ -36,11 +41,46 @@ func Load(path string) (model.Config, error) {
 		cfg.Rules = []model.Rule{}
 	}
 
+	// Backward compatibility: merge legacy links/rules into aliases.
+	for name, dest := range cfg.Links {
+		cfg.Aliases = append(cfg.Aliases, model.Alias{Alias: strings.Trim(name, "/"), Destination: strings.TrimSpace(dest), Enabled: model.BoolPtr(true)})
+	}
+	for _, rule := range cfg.Rules {
+		if rule.Type == "prefix" {
+			cfg.Aliases = append(cfg.Aliases, model.Alias{
+				Alias:       strings.Trim(rule.Pattern, "/") + "/{rest...}",
+				Destination: strings.TrimRight(rule.Redirect, "/") + "/{rest...}",
+				Enabled:     model.BoolPtr(true),
+			})
+			continue
+		}
+		cfg.Aliases = append(cfg.Aliases, model.Alias{Alias: strings.Trim(rule.Pattern, "/"), Destination: strings.TrimSpace(rule.Redirect), Enabled: model.BoolPtr(true)})
+	}
+
 	return cfg, nil
 }
 
 // Save writes the config back to YAML atomically (write to tmp, then rename).
 func Save(path string, cfg model.Config) error {
+	if cfg.Aliases == nil {
+		cfg.Aliases = []model.Alias{}
+	}
+	if cfg.Links == nil {
+		cfg.Links = make(map[string]string)
+		for _, a := range cfg.Aliases {
+			if !a.IsEnabled() {
+				continue
+			}
+			if strings.Contains(a.Alias, "{") {
+				continue
+			}
+			cfg.Links[a.Alias] = a.Destination
+		}
+	}
+	if cfg.Rules == nil {
+		cfg.Rules = []model.Rule{}
+	}
+
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
