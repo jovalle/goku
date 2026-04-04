@@ -1,258 +1,250 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>goku — golinks</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Goku Command Center</title>
     <style>
+      :root {
+        --bg: #0e1116;
+        --bg-soft: #161b22;
+        --panel: #0f141c;
+        --line: #253041;
+        --text: #dde6f4;
+        --muted: #93a6be;
+        --accent: #4ade80;
+        --accent-2: #38bdf8;
+        --danger: #fb7185;
+      }
       * {
-        margin: 0;
-        padding: 0;
         box-sizing: border-box;
       }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        background: #0a0a0a;
-        color: #e5e5e5;
-        max-width: 960px;
+        margin: 0;
+        padding: 24px;
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          Segoe UI,
+          Helvetica,
+          Arial,
+          sans-serif;
+        background: radial-gradient(circle at 20% -10%, #1a2440, transparent 40%), var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1100px;
         margin: 0 auto;
-        padding: 2rem;
+      }
+      .head {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand img {
+        width: 44px;
+        height: 44px;
       }
       h1 {
-        color: #fff;
-        margin-bottom: 0.25rem;
-        font-size: 1.5rem;
+        margin: 0;
+        font-size: 1.3rem;
       }
-      .subtitle {
-        color: #666;
-        margin-bottom: 2rem;
-        font-size: 0.875rem;
+      .muted {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .row {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr auto;
+        margin: 12px 0 18px;
+      }
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--bg-soft);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: #071111;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        font-weight: 600;
+        cursor: pointer;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 2rem;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 12px;
+        font-size: 0.93rem;
       }
       th {
-        text-align: left;
-        padding: 0.5rem 0;
-        color: #888;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 1px solid #222;
-      }
-      td {
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #111;
-        font-size: 0.875rem;
-      }
-      td a {
-        color: #3b82f6;
-        text-decoration: none;
-      }
-      td a:hover {
-        text-decoration: underline;
-      }
-      .shortname {
-        color: #f59e0b;
-        font-family: monospace;
+        color: var(--muted);
         font-weight: 600;
       }
-      .tag {
-        display: inline-block;
-        padding: 0.125rem 0.5rem;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        font-weight: 500;
+      td code {
+        color: #fcd34d;
       }
-      .tag-prefix {
-        background: #1e3a5f;
-        color: #60a5fa;
-      }
-      .tag-template {
-        background: #3b1f4e;
-        color: #c084fc;
-      }
-      form.inline {
+      .actions {
         display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
       }
-      input,
-      select {
-        background: #111;
-        border: 1px solid #333;
-        color: #e5e5e5;
-        padding: 0.5rem;
-        border-radius: 4px;
-        font-size: 0.875rem;
-      }
-      input:focus,
-      select:focus {
-        border-color: #3b82f6;
-        outline: none;
-      }
-      input[name='name'] {
-        width: 120px;
-      }
-      input[name='url'],
-      input[name='redirect'] {
-        flex: 1;
-        min-width: 200px;
-      }
-      input[name='pattern'] {
-        width: 160px;
-      }
-      select {
-        width: 120px;
-        appearance: none;
-        cursor: pointer;
-      }
-      button {
-        background: #3b82f6;
-        color: #fff;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.875rem;
-        transition: background 0.15s;
-      }
-      button:hover {
-        background: #2563eb;
-      }
-      .delete-btn {
+      .danger {
         background: transparent;
-        color: #666;
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--danger);
+        color: #fecdd3;
       }
-      .delete-btn:hover {
-        color: #ef4444;
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: center;
       }
-      section {
-        margin-bottom: 2rem;
+      .hint {
+        color: var(--muted);
+        font-size: 0.86rem;
       }
-      h2 {
-        font-size: 1rem;
-        color: #ccc;
-        margin-bottom: 0.75rem;
+      .right {
+        margin-left: auto;
       }
-      .empty {
-        color: #666;
-        font-style: italic;
-      }
-      @media (max-width: 600px) {
+      @media (max-width: 800px) {
         body {
-          padding: 1rem;
+          padding: 16px;
         }
-        input[name='name'],
-        input[name='pattern'],
-        select {
-          width: 100%;
+        .row {
+          grid-template-columns: 1fr;
         }
-        form.inline {
+        .toolbar {
           flex-direction: column;
+          align-items: stretch;
         }
       }
     </style>
   </head>
   <body>
-    <h1>goku</h1>
-    <p class="subtitle">golinks service &middot; {{ .LinkCount }} links &middot; {{ .RuleCount }} rules</p>
+    <main class="wrap">
+      <header class="head">
+        <div class="brand">
+          <img src="/static/logo.png" alt="goku" />
+          <div>
+            <h1>Goku Command Center</h1>
+            <div class="muted">Golink Directory: {{ .AliasCount }} golinks</div>
+          </div>
+        </div>
+        <form method="post" action="/logout"><button type="submit" class="danger">Log out</button></form>
+      </header>
 
-    <section>
-      <h2>Add Link</h2>
-      <form class="inline" method="POST" action="/api/links">
-        <input type="text" name="name" placeholder="shortname" required />
-        <input type="url" name="url" placeholder="https://..." required />
-        <button type="submit">Add Link</button>
+      <form class="row" method="post" action="/api/aliases">
+        <input name="alias" placeholder="alias pattern (e.g. gh/{owner}/{repo} or r/{})" required />
+        <input name="destination" placeholder="destination (e.g. https://github.com/{owner}/{repo})" required />
+        <button type="submit">Save golink</button>
       </form>
-    </section>
 
-    <section>
-      <h2>Links</h2>
-      {{ if .Links }}
+      <section class="toolbar">
+        <input id="alias-search" placeholder="Fuzzy search golinks. Quick add: alias https://destination then Enter" />
+        <span class="hint right">Tip: one placeholder may be {}; multiple placeholders must be unique names.</span>
+      </section>
+
       <table>
         <thead>
           <tr>
-            <th>Short Name</th>
-            <th>URL</th>
+            <th>Alias</th>
+            <th>Destination</th>
             <th></th>
           </tr>
         </thead>
-        <tbody>
-          {{ range .Links }}
-          <tr>
-            <td><span class="shortname">go/{{ .Name }}</span></td>
-            <td><a href="{{ .URL }}" target="_blank" rel="noopener">{{ .URL }}</a></td>
+        <tbody id="alias-body">
+          {{ if .Aliases }} {{ range .Aliases }}
+          <tr data-row data-alias="{{ .Alias }}" data-destination="{{ .Destination }}">
+            <td><code>{{ .Alias }}</code></td>
+            <td>{{ .Destination }}</td>
             <td>
-              <form method="POST" action="/api/links/delete" style="display: inline">
-                <input type="hidden" name="name" value="{{ .Name }}" />
-                <button class="delete-btn" type="submit" title="Delete">&#x2715;</button>
-              </form>
+              <div class="actions">
+                <form method="post" action="/api/aliases/delete">
+                  <input type="hidden" name="alias" value="{{ .Alias }}" />
+                  <button type="submit" class="danger">Delete</button>
+                </form>
+              </div>
             </td>
+          </tr>
+          {{ end }} {{ else }}
+          <tr>
+            <td colspan="3" class="muted">No golinks configured yet.</td>
           </tr>
           {{ end }}
         </tbody>
       </table>
-      {{ else }}
-      <p class="empty">No links configured.</p>
-      {{ end }}
-    </section>
+    </main>
 
-    <section>
-      <h2>Add Rule</h2>
-      <form class="inline" method="POST" action="/api/rules">
-        <input type="text" name="name" placeholder="rule name" required />
-        <select name="type" required>
-          <option value="prefix">prefix</option>
-          <option value="template">template</option>
-        </select>
-        <input type="text" name="pattern" placeholder="pattern" required />
-        <input type="url" name="redirect" placeholder="https://..." required />
-        <button type="submit">Add Rule</button>
-      </form>
-    </section>
+    <form id="quick-add" method="post" action="/api/aliases" style="display: none">
+      <input name="alias" id="quick-alias" />
+      <input name="destination" id="quick-destination" />
+    </form>
 
-    {{ if .Rules }}
-    <section>
-      <h2>Rules</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Pattern</th>
-            <th>Redirect</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {{ range .Rules }}
-          <tr>
-            <td>{{ .Name }}</td>
-            <td>
-              {{ if eq .Type "prefix" }}<span class="tag tag-prefix">prefix</span>{{ else }}<span
-                class="tag tag-template"
-                >template</span
-              >{{ end }}
-            </td>
-            <td><span class="shortname">go/{{ .Pattern }}</span></td>
-            <td><a href="{{ .Redirect }}" target="_blank" rel="noopener">{{ .Redirect }}</a></td>
-            <td>
-              <form method="POST" action="/api/rules/delete" style="display: inline">
-                <input type="hidden" name="name" value="{{ .Name }}" />
-                <button class="delete-btn" type="submit" title="Delete">&#x2715;</button>
-              </form>
-            </td>
-          </tr>
-          {{ end }}
-        </tbody>
-      </table>
-    </section>
-    {{ end }}
+    <script>
+      const search = document.getElementById('alias-search');
+      const rows = Array.from(document.querySelectorAll('[data-row]'));
+
+      function fuzzy(q, s) {
+        q = q.toLowerCase().trim();
+        s = s.toLowerCase();
+        if (!q) return true;
+        if (s.includes(q)) return true;
+        let qi = 0;
+        for (let i = 0; i < s.length && qi < q.length; i++) {
+          if (s[i] === q[qi]) qi++;
+        }
+        return qi === q.length;
+      }
+
+      function filterRows() {
+        const q = search.value;
+        rows.forEach((row) => {
+          const text = row.dataset.alias + ' ' + row.dataset.destination;
+          row.style.display = fuzzy(q, text) ? '' : 'none';
+        });
+      }
+
+      function parseQuickAdd(value) {
+        const parts = value.trim().split(/\s+/);
+        if (parts.length < 2) return null;
+        const alias = parts[0];
+        const destination = parts.slice(1).join(' ');
+        if (!/^https?:\/\//i.test(destination)) return null;
+        return { alias, destination };
+      }
+
+      search.addEventListener('input', filterRows);
+      search.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        const parsed = parseQuickAdd(search.value);
+        if (!parsed) return;
+        event.preventDefault();
+        document.getElementById('quick-alias').value = parsed.alias;
+        document.getElementById('quick-destination').value = parsed.destination;
+        document.getElementById('quick-add').submit();
+      });
+    </script>
   </body>
 </html>

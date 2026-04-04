@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Goku Redirect</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/css/bootstrap.min.css" rel="stylesheet" />
+  </head>
+  <body class="bg-light">
+    <main class="container py-5">
+      <div class="row justify-content-center">
+        <section class="col-12 col-lg-8">
+          <div class="card shadow-sm">
+            <div class="card-body p-4">
+              <h1 class="h4 mb-3">Redirect Preview</h1>
+              <p class="text-muted mb-4">Goku is preparing your redirect.</p>
+
+              <dl class="row mb-4">
+                <dt class="col-sm-3">Alias</dt>
+                <dd class="col-sm-9"><code>{{ .Alias }}</code></dd>
+
+                <dt class="col-sm-3">Destination</dt>
+                <dd class="col-sm-9 text-break">
+                  <a id="destination-link" href="{{ .Destination }}" target="_blank" rel="noopener noreferrer"
+                    >{{ .Destination }}</a
+                  >
+                </dd>
+              </dl>
+
+              <div class="alert alert-info mb-4">
+                Redirecting in <strong><span id="countdown">{{ .Delay }}</span>s</strong>...
+              </div>
+
+              <div class="d-flex gap-2">
+                <a class="btn btn-primary" href="{{ .Destination }}">Go now</a>
+                <a class="btn btn-outline-secondary" href="/">Back to Goku</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const destination = document.getElementById('destination-link').href;
+      const countdownEl = document.getElementById('countdown');
+      let remaining = Number(countdownEl.textContent || '5');
+
+      const timer = setInterval(() => {
+        remaining -= 1;
+        countdownEl.textContent = String(Math.max(remaining, 0));
+        if (remaining <= 0) {
+          clearInterval(timer);
+          window.location.href = destination;
+        }
+      }, 1000);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

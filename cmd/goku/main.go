@@ -1,6 +1,6 @@
 // @title       goku API
 // @version     1.0
-// @description Golinks URL shortener service.
+// @description Alias URL shortener service.
 //
 // @host     localhost:9001
 // @BasePath /
@@ -52,8 +52,13 @@ func main() {
 }
 
 func run(ctx context.Context, logger *slog.Logger) error {
-	port := getEnv("GOKU_WEB_PORT", "9001")
-	addr := ":" + port
+	apiPort := getEnv("GOKU_API_PORT", "9000")
+	adminPort := getEnv("GOKU_ADMIN_PORT", getEnv("GOKU_WEB_PORT", "9001"))
+	apiAddr := ":" + apiPort
+	adminAddr := ":" + adminPort
+	if apiAddr == adminAddr {
+		return fmt.Errorf("GOKU_API_PORT and GOKU_ADMIN_PORT must be different")
+	}
 	configPath := getEnv("GOKU_CONFIG", "config/config.yaml")
 
 	cfg, err := config.Load(configPath)
@@ -61,11 +66,10 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	logger.Info("config loaded", "links", len(cfg.Links), "rules", len(cfg.Rules))
+	logger.Info("config loaded", "aliases", len(cfg.Aliases))
 
 	metrics.Register()
-	metrics.LinksTotal.Set(float64(len(cfg.Links)))
-	metrics.RulesTotal.Set(float64(len(cfg.Rules)))
+	metrics.AliasesTotal.Set(float64(len(cfg.Aliases)))
 
 	auth := server.AuthConfig{
 		Username: getEnv("GOKU_ADMIN_USERNAME", "admin"),
@@ -100,15 +104,25 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	logger.Info("API key", "key", auth.APIKey)
 
 	if auth.Password == "" {
-		logger.Warn("GOKU_ADMIN_PASSWORD not set - UI and API are unprotected")
+		logger.Warn("GOKU_ADMIN_PASSWORD not set - admin UI login is disabled")
 	}
 
 	s := store.New(cfg)
-	srv := server.New(s, logger, configPath, auth)
+	publicSrv := server.NewPublic(s, logger)
+	adminSrv := server.NewAdmin(s, logger, configPath, auth)
 
-	httpServer := &http.Server{
-		Addr:              addr,
-		Handler:           srv,
+	apiHTTPServer := &http.Server{
+		Addr:              apiAddr,
+		Handler:           publicSrv,
+		ReadTimeout:       5 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	adminHTTPServer := &http.Server{
+		Addr:              adminAddr,
+		Handler:           adminSrv,
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -118,12 +132,24 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	g, gctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		logger.Info("starting goku",
-			"addr", addr,
+		logger.Info("starting goku public endpoint",
+			"addr", apiAddr,
 			"version", version,
 			"commit", commit,
 		)
-		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := apiHTTPServer.ListenAndServe(); err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		logger.Info("starting goku admin endpoint",
+			"addr", adminAddr,
+			"version", version,
+			"commit", commit,
+		)
+		if err := adminHTTPServer.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}
 		return nil
@@ -138,7 +164,10 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		logger.Info("shutting down...")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return httpServer.Shutdown(shutdownCtx)
+		if err := apiHTTPServer.Shutdown(shutdownCtx); err != nil {
+			return err
+		}
+		return adminHTTPServer.Shutdown(shutdownCtx)
 	})
 
 	return g.Wait()
