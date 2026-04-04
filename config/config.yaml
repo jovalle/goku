@@ -1,29 +1,31 @@
+aliases:
+    - alias: r/{subreddit}
+      destination: https://www.reddit.com/r/{subreddit}
+    - alias: gh/{owner}/{name}
+      destination: https://github.com/{owner}/{name}
+    - alias: wiki/{topic}
+      destination: https://en.wikipedia.org/wiki/{topic}
+    - alias: yt/{}
+      destination: https://www.youtube.com/results?search_query={}
+    - alias: t/{user}
+      destination: https://x.com/{user}
+    - alias: gh
+      destination: https://github.com
+      enabled: true
+    - alias: g
+      destination: https://www.google.com
+    - alias: jay
+      destination: https://jayovalle.com
+    - alias: jpmc
+      destination: https://jpmorganchase.com
+    - alias: todo
+      destination: https://app.todoist.com/app/
+    - alias: yc
+      destination: https://news.ycombinator.com
 links:
     g: https://www.google.com
     gh: https://github.com
-    gh3: https://github.com/jovalle
     jay: https://jayovalle.com
     jpmc: https://jpmorganchase.com
-    r: https://www.reddit.com
+    todo: https://app.todoist.com/app/
     yc: https://news.ycombinator.com
-rules:
-    - name: reddit
-      type: prefix
-      pattern: r
-      redirect: https://www.reddit.com/r
-    - name: github
-      type: template
-      pattern: gh/{owner}/{name}
-      redirect: https://github.com/{owner}/{name}
-    - name: wikipedia
-      type: template
-      pattern: wiki/{topic}
-      redirect: https://en.wikipedia.org/wiki/{topic}
-    - name: youtube
-      type: template
-      pattern: yt/{query}
-      redirect: https://www.youtube.com/results?search_query={query}
-    - name: twitter
-      type: template
-      pattern: t/{user}
-      redirect: https://x.com/{user}

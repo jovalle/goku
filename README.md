@@ -6,7 +6,11 @@
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
+[![CI](https://github.com/jovalle/goku/actions/workflows/ci.yml/badge.svg)](https://github.com/jovalle/goku/actions/workflows/ci.yml)
+[![Docker Workflow](https://github.com/jovalle/goku/actions/workflows/docker.yml/badge.svg)](https://github.com/jovalle/goku/actions/workflows/docker.yml)
+[![Release Workflow](https://github.com/jovalle/goku/actions/workflows/release.yml/badge.svg)](https://github.com/jovalle/goku/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/jovalle/goku?display_name=tag)](https://github.com/jovalle/goku/releases)
+[![Coverage](https://img.shields.io/badge/Coverage-go%20test%20%28CI%29-31c653)](https://github.com/jovalle/goku/actions/workflows/ci.yml)
 
 </div>
 
@@ -14,123 +18,193 @@
 
 ## Quick Start
 
-```bash
-# Run
-just run
+1. Run goku:
 
-# Or without just:
+```bash
+just run
+```
+
+or:
+
+```bash
 go run ./cmd/goku
 ```
 
-Visit `http://localhost:9001` for the management UI.
+1. Open the apps:
 
-## Local Development
+- Public endpoint: `http://localhost:9000`
+- Admin panel: `http://localhost:9001`
 
-Install the tracked git hooks once per clone:
+1. (Optional) enable admin login:
 
 ```bash
-just install-hooks
+GOKU_ADMIN_PASSWORD=my-secret just run
 ```
 
-That configures Git to use `.githooks/pre-commit`, which runs `go test -race -coverprofile=coverage.out ./...` before each commit so CI-style test failures are caught locally.
+Without `GOKU_ADMIN_PASSWORD`, the admin UI is open (no logout button shown).
 
-## Features
+## Current Capabilities
 
-- **Golinks** — `go/gh` → GitHub, `go/g` → Google
-- **Prefix rules** — `go/r/golang` expands to subreddit URL
-- **Template rules** — `go/gh/{owner}/{name}` fills placeholders
-- **Live reload** — edit `config/config.yaml`, changes apply instantly
-- **Management UI** — dark-themed web UI to add/delete links and rules
-- **Prometheus metrics** — `/metrics`
-- **Health check** — `/healthz` (JSON with version, uptime, counts)
-- **API key auth** — protect UI and API; redirects stay public
+- Alias-based redirects with placeholder support (`{}` and named placeholders)
+- Public and admin endpoints split by port (`:9000` and `:9001`)
+- Live health JSON (`/healthz`) and WebSocket stream (`/ws/health`)
+- Admin alias directory with:
+  - search
+  - sortable columns
+  - add / edit / delete
+  - enable / disable toggle
+  - clickable destination links
+  - clickable alias preview page with countdown redirect
+- API key + optional password authentication for admin/API operations
+- Config live-reload from disk
+- Dashboard/API alias changes are written back to `config/config.yaml` for persistence
+- Prometheus metrics (`/metrics`)
 
 ## Configuration
 
 Edit `config/config.yaml`:
 
 ```yaml
-links:
-  gh: https://github.com
-  g: https://google.com
-rules:
-  - name: reddit
-    type: prefix
-    pattern: r
-    redirect: https://www.reddit.com/r
-  - name: gh
-    type: template
-    pattern: gh/{owner}/{name}
-    redirect: https://github.com/{owner}/{name}
+aliases:
+  - alias: gh
+    destination: https://github.com
+  - alias: gh/{owner}/{repo}
+    destination: https://github.com/{owner}/{repo}
+  - alias: r/{subreddit}
+    destination: https://www.reddit.com/r/{subreddit}
+  - alias: yt/{}
+    destination: https://www.youtube.com/results?search_query={}
 ```
 
-## API
+Placeholder rules:
 
-| Method | Path                       | Description                                      |
-| ------ | -------------------------- | ------------------------------------------------ |
-| `GET`  | `/`                        | Management UI                                    |
-| `GET`  | `/{path}`                  | Redirect to target URL                           |
-| `GET`  | `/healthz`                 | Health check (JSON)                              |
-| `GET`  | `/metrics`                 | Prometheus metrics                               |
-| `GET`  | `/api/links`               | List all links (JSON)                            |
-| `POST` | `/api/links`               | Add a link (form: name, url)                     |
-| `POST` | `/api/links/{name}/delete` | Delete a link                                    |
-| `POST` | `/api/rules`               | Add a rule (form: name, type, pattern, redirect) |
-| `POST` | `/api/rules/{name}/delete` | Delete a rule                                    |
+- Single placeholder aliases can use `{}`.
+- Multiple placeholders must be uniquely named.
+- Destination placeholders must be defined by the alias pattern.
+
+`go/` prefix note:
+
+- Keep using `go/` style links if that is your workflow (for example `http://go/gh` or `http://go/r/golang`).
+- This assumes your DNS (or local host mapping) resolves `go` (or a hostname like `go.home.arpa`) to your goku endpoint.
+- Without DNS/host routing, use the explicit server URL instead (for example `http://localhost:9000/gh`).
+
+## Endpoints
+
+Public (`:9000`):
+
+| Method | Path         | Description             |
+| ------ | ------------ | ----------------------- |
+| `GET`  | `/`          | Public status page      |
+| `GET`  | `/{path...}` | Alias redirect          |
+| `GET`  | `/healthz`   | Health JSON             |
+| `GET`  | `/ws/health` | Health WebSocket stream |
+
+Admin (`:9001`):
+
+| Method | Path                       | Description                                |
+| ------ | -------------------------- | ------------------------------------------ |
+| `GET`  | `/`                        | Admin panel                                |
+| `GET`  | `/login`                   | Login page (when password auth is enabled) |
+| `POST` | `/login`                   | Create admin session                       |
+| `POST` | `/logout`                  | Clear admin session                        |
+| `GET`  | `/preview?alias=<pattern>` | Alias redirect preview page                |
+| `GET`  | `/api/aliases`             | List aliases                               |
+| `POST` | `/api/aliases`             | Create/update alias                        |
+| `POST` | `/api/aliases/edit`        | Edit alias                                 |
+| `POST` | `/api/aliases/toggle`      | Enable/disable alias                       |
+| `POST` | `/api/aliases/delete`      | Delete alias                               |
+| `POST` | `/api/import`              | Batch import aliases                       |
+| `GET`  | `/api/broken-links`        | Read unresolved paths seen by server       |
 
 ## Environment Variables
 
-| Variable              | Default              | Description                                     |
-| --------------------- | -------------------- | ----------------------------------------------- |
-| `GOKU_WEB_PORT`       | `9001`               | Port to listen on                               |
-| `GOKU_CONFIG`         | `config/config.yaml` | Config file path                                |
-| `GOKU_ADMIN_USERNAME` | `admin`              | Username for Basic Auth (browser login)         |
-| `GOKU_ADMIN_PASSWORD` | _(empty — no auth)_  | Password for Basic Auth (enables UI protection) |
-| `GOKU_API_KEY`        | _(from config)_      | Bearer token for API access (overrides config)  |
+| Variable              | Default              | Description                                    |
+| --------------------- | -------------------- | ---------------------------------------------- |
+| `GOKU_API_PORT`       | `9000`               | Public endpoint port                           |
+| `GOKU_ADMIN_PORT`     | `9001`               | Admin endpoint port                            |
+| `GOKU_WEB_PORT`       | `9001`               | Backward-compatible admin port fallback        |
+| `GOKU_CONFIG`         | `config/config.yaml` | Config file path                               |
+| `GOKU_ADMIN_USERNAME` | `admin`              | Username for basic auth compatibility          |
+| `GOKU_ADMIN_PASSWORD` | _(empty)_            | Enables login page + session auth for admin UI |
+| `GOKU_API_KEY`        | _(generated/file)_   | Admin API bearer token                         |
 
-## Authentication
+## Homelab/LAN Setup for `go/`
 
-Set `GOKU_ADMIN_PASSWORD` to protect the UI and API:
+If you want links like `http://go/gh` on your LAN, set up local name resolution and route that hostname to goku.
 
-```bash
-GOKU_ADMIN_PASSWORD=my-secret just run
+1. Pick a local hostname
+
+- Recommended: `go.home.arpa` or another local domain you control.
+- You can use single-label `go` if your LAN resolver supports it.
+
+1. Configure DNS (or hosts as a fallback)
+
+- DNS: create an `A`/`AAAA` record for your chosen host pointing to the machine running goku or your reverse proxy.
+- Hosts fallback (per client machine):
+
+```text
+# /etc/hosts (macOS/Linux)
+192.168.1.50 go go.home.arpa
 ```
 
-When set, the management UI, `/api/*`, and `/metrics` require credentials.
-Redirects (`go/gh`, `go/r/golang`, etc.) and `/healthz` remain public.
+1. Route traffic to goku public port (`:9000`)
 
-**Browser access:** HTTP Basic Auth — your browser prompts for username and password.
-Defaults to `admin` / your password. Override the username with `GOKU_ADMIN_USERNAME`.
+- If you run goku directly on the host, send HTTP traffic for `go` to `:9000`.
+- If you use a reverse proxy, point that hostname to `http://127.0.0.1:9000`.
 
-**API access:** Use the Bearer token (printed in logs at startup). On first run, a key is
-automatically generated and saved to `config/.api_key` (gitignored).
-Subsequent restarts reuse the same key.
+Minimal examples:
 
-```bash
-curl -H "Authorization: Bearer <key>" http://localhost:9001/api/links
+```caddyfile
+go.home.arpa {
+  reverse_proxy 127.0.0.1:9000
+}
 ```
 
-You can override the saved key by setting `GOKU_API_KEY` in the environment.
+```nginx
+server {
+  listen 80;
+  server_name go.home.arpa;
+  location / {
+    proxy_pass http://127.0.0.1:9000;
+  }
+}
+```
 
-If `GOKU_ADMIN_PASSWORD` is not set, everything is open (suitable for local development).
+```yaml
+# Traefik labels (example)
+traefik.http.routers.goku.rule=Host(`go.home.arpa`)
+traefik.http.services.goku.loadbalancer.server.port=9000
+```
 
-## Roadmap
+1. Validate
 
-- [ ] Auto-correction & suggestions for mistyped links (e.g. `go/ghub` → `go/gh`)
-- [ ] Live update on file change without needing to restart the server
-- [ ] Click analytics — track hit counts per link over time
-- [ ] Link search & filtering in the UI
-- [ ] Link expiration & time-limited redirects
-- [ ] Edit existing links in-place from the UI
-- [ ] Rate limiting on redirects and API endpoints
-- [ ] Multi-user support with role-based permissions
-- [ ] QR code generation for links
+- Open `http://go.home.arpa/gh` (or `http://go/gh` if using single-label hostnames).
+- Run `curl -I http://go.home.arpa/gh` and confirm a redirect response.
+
+## Authentication Notes
+
+- When `GOKU_ADMIN_PASSWORD` is set:
+  - Admin UI requires login.
+  - API can use session, basic auth, or bearer key.
+- When `GOKU_ADMIN_PASSWORD` is empty:
+  - Admin UI is open.
+  - Bearer key can still protect API endpoints when configured.
+
+The API key is generated on first run and stored at `config/.api_key` if not supplied via `GOKU_API_KEY`.
+
+## Development
+
+```bash
+just fmt
+just test
+just build
+```
 
 ## Background
 
 Goku arguably started as an itch I first scratched during an internship at Cisco, where I built an auto-correcting URL shortener and redirection tool for the intranet there. The first of its kind at the time, it was a massive hit among my peers. So much so that the idea stuck with me.
 
-There have since been multiple solutions and iterations in my homelab including janky DNS scripts (rite of passage), some Traefik magic and a one-off Caddy config, but none satisfied the itch especially when faced with expanding scenarios like multi-level queries (e.g. `go/t/TWS-4291/comments`), so I embarked on rewriting the concept from scratch and in Go.
+There have since been multiple solutions and iterations in my homelab including janky DNS scripts (rite of passage), some Traefik magic and a one-off Caddy config, but none satisfied the itch especially when faced with expanding scenarios like multi-level queries (e.g. `t/TWS-4291/comments`), so I embarked on rewriting the concept from scratch and in Go.
 
 The name _goku_ (悟空) is eternally recognizable for anyone familiar with DBZ and also means _enlightenment through emptiness_. Match made in heaven for this project.
 
