@@ -97,6 +97,30 @@ func TestPublicLandingPage(t *testing.T) {
 	}
 }
 
+func TestLogoServedFromStaticRoute(t *testing.T) {
+	srvs := newTestServers(t, model.Config{}, AuthConfig{})
+	for name, srv := range map[string]*Server{
+		"admin":  srvs.admin,
+		"public": srvs.public,
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/static/logo.png", nil)
+			w := httptest.NewRecorder()
+			srv.ServeHTTP(w, req)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", w.Code)
+			}
+			if ct := w.Header().Get("Content-Type"); ct != "image/png" {
+				t.Fatalf("content-type = %q, want image/png", ct)
+			}
+			if w.Body.Len() == 0 {
+				t.Fatal("expected logo bytes in response body")
+			}
+		})
+	}
+}
+
 func TestAdminLandingPage(t *testing.T) {
 	srv := newAdminTestServer(t, model.Config{})
 	req := httptest.NewRequest("GET", "/", nil)

@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -622,13 +621,8 @@ func (s *Server) handleAliasPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLogo(w http.ResponseWriter, r *http.Request) {
-	img, err := os.ReadFile(".github/assets/logo.png")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
 	w.Header().Set("Content-Type", "image/png")
-	_, _ = w.Write(img)
+	_, _ = w.Write(ui.Logo)
 }
 
 func (s *Server) renderTemplate(w http.ResponseWriter, status int, templateName string, data any) {
