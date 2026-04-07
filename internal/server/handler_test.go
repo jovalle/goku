@@ -148,6 +148,24 @@ func TestAdminLandingPage(t *testing.T) {
 	}
 }
 
+func TestAdminLandingPage_UsesConfiguredPublicPreviewBaseURL(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com"}},
+	})
+	srv.publicBase = "https://go.example.com"
+
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), `href="https://go.example.com/preview?alias=gh"`) {
+		t.Fatalf("expected admin preview link to point at public base URL, body = %q", w.Body.String())
+	}
+}
+
 func TestAdminLoginPageShownWhenPasswordConfigured(t *testing.T) {
 	srv := newAuthServer(t, model.Config{}, AuthConfig{Username: "admin", Password: "secret"})
 
@@ -243,6 +261,45 @@ func TestHandleRedirect_TemplateAlias(t *testing.T) {
 	}
 	if loc := w.Header().Get("Location"); loc != "https://github.com/jovalle/goku" {
 		t.Errorf("Location = %q", loc)
+	}
+}
+
+func TestHandleRedirect_LegacyFallbackRule(t *testing.T) {
+	srv := newPublicTestServer(t, model.Config{
+		Rules: []model.Rule{{
+			Name:     "example",
+			Type:     "template",
+			Pattern:  "{query}",
+			Redirect: "https://{query}.example.invalid",
+		}},
+	})
+	req := httptest.NewRequest("GET", "/sonarr", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302", w.Code)
+	}
+	if loc := w.Header().Get("Location"); loc != "https://sonarr.example.invalid" {
+		t.Errorf("Location = %q", loc)
+	}
+}
+
+func TestAdminServerAliasPathsReturnNotFound(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{
+		Rules: []model.Rule{{
+			Name:     "example",
+			Type:     "template",
+			Pattern:  "{query}",
+			Redirect: "https://{query}.example.invalid",
+		}},
+	})
+	req := httptest.NewRequest("GET", "/sonarr", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
 	}
 }
 
@@ -465,7 +522,7 @@ func TestHandleToggleAlias(t *testing.T) {
 }
 
 func TestHandleAliasPreview(t *testing.T) {
-	srv := newAdminTestServer(t, model.Config{
+	srv := newPublicTestServer(t, model.Config{
 		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com"}},
 	})
 
@@ -486,7 +543,7 @@ func TestHandleAliasPreview(t *testing.T) {
 }
 
 func TestHandleAliasPreview_StripsPlaceholderValues(t *testing.T) {
-	srv := newAdminTestServer(t, model.Config{
+	srv := newPublicTestServer(t, model.Config{
 		Aliases: []model.Alias{{Alias: "yt/{}", Destination: "https://www.youtube.com/results?search_query={}"}},
 	})
 
@@ -503,6 +560,20 @@ func TestHandleAliasPreview_StripsPlaceholderValues(t *testing.T) {
 	}
 	if !strings.Contains(body, "search_query=") {
 		t.Fatalf("expected placeholder to resolve to empty value in preview destination, body = %q", body)
+	}
+}
+
+func TestAdminServerDoesNotExposePreview(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com"}},
+	})
+
+	req := httptest.NewRequest("GET", "/preview?path=gh", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
 	}
 }
 
@@ -689,6 +760,18 @@ func TestMetrics_PublicEvenWithAuth(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", w.Code)
+	}
+}
+
+func TestMetrics_NotExposedOnPublicServer(t *testing.T) {
+	srv := newPublicTestServer(t, model.Config{})
+
+	req := httptest.NewRequest("GET", "/metrics", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
 	}
 }
 
@@ -904,6 +987,24 @@ func TestMetrics_PublicWhenOnlyAPIKeyConfigured(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", w.Code)
+	}
+}
+
+func TestHealthWebSocket_NotExposedOnAdminServer(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{})
+	httpSrv := httptest.NewServer(srv)
+	defer httpSrv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(httpSrv.URL, "http") + "/ws/health"
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err == nil {
+		t.Fatal("expected websocket dial to fail on admin server")
+	}
+	if resp == nil {
+		t.Fatal("expected HTTP response from failed websocket upgrade")
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", resp.StatusCode)
 	}
 }
 

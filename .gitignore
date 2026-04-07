@@ -42,6 +42,7 @@ bin/
 
 # Temporary files
 *.tmp
+tmp/
 
 # Build script
 write_files.py

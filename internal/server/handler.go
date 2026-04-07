@@ -39,9 +39,10 @@ type publicPageData struct {
 }
 
 type adminPageData struct {
-	AliasCount int
-	Aliases    []model.Alias
-	ShowLogout  bool
+	AliasCount     int
+	Aliases        []model.Alias
+	ShowLogout     bool
+	PreviewBaseURL string
 }
 
 type loginPageData struct {
@@ -120,7 +121,12 @@ func (s *Server) handleAdminHome(w http.ResponseWriter, r *http.Request) {
 		return aliases[i].Alias < aliases[j].Alias
 	})
 
-	data := adminPageData{AliasCount: len(aliases), Aliases: aliases, ShowLogout: s.uiAuthEnabled()}
+	data := adminPageData{
+		AliasCount:     len(aliases),
+		Aliases:        aliases,
+		ShowLogout:     s.uiAuthEnabled(),
+		PreviewBaseURL: s.publicBase,
+	}
 	s.renderTemplate(w, http.StatusOK, "templates/admin.html", data)
 }
 

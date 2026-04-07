@@ -110,6 +110,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	s := store.New(cfg)
 	publicSrv := server.NewPublic(s, logger)
 	adminSrv := server.NewAdmin(s, logger, configPath, auth)
+	adminSrv.SetPublicBaseURL(getEnv("GOKU_PUBLIC_BASE_URL", ""))
 
 	apiHTTPServer := &http.Server{
 		Addr:              apiAddr,

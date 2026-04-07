@@ -80,7 +80,7 @@
               >
                 <td>
                   <a
-                    href="/preview?alias={{ .Alias | urlquery }}"
+                    href="{{ if $.PreviewBaseURL }}{{ $.PreviewBaseURL }}{{ end }}/preview?alias={{ .Alias | urlquery }}"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="link-body-emphasis"

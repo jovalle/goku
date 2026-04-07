@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -24,6 +25,7 @@ type Server struct {
 	logger     *slog.Logger
 	configPath string
 	auth       AuthConfig
+	publicBase string
 	mode       string
 	handler    http.Handler
 	mux        *http.ServeMux
@@ -50,6 +52,11 @@ func NewAdmin(s *store.LinkStore, logger *slog.Logger, configPath string, auth A
 // NewPublic creates a public server (landing + redirects + health).
 func NewPublic(s *store.LinkStore, logger *slog.Logger) *Server {
 	return newWithMode(s, logger, "", AuthConfig{}, modePublic)
+}
+
+// SetPublicBaseURL configures absolute links from admin pages to public endpoints.
+func (s *Server) SetPublicBaseURL(raw string) {
+	s.publicBase = strings.TrimRight(strings.TrimSpace(raw), "/")
 }
 
 func newWithMode(s *store.LinkStore, logger *slog.Logger, configPath string, auth AuthConfig, mode string) *Server {
@@ -82,20 +89,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
-	// Shared public endpoints.
+	// Shared endpoints.
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
-	s.mux.HandleFunc("GET /ws/health", s.handleHealthWebSocket)
-	s.mux.HandleFunc("GET /preview", s.handleAliasPreview)
-	s.mux.Handle("GET /metrics", promhttp.Handler())
 	s.mux.HandleFunc("GET /static/logo.png", s.handleLogo)
 
 	switch s.mode {
 	case modePublic:
+		s.mux.HandleFunc("GET /ws/health", s.handleHealthWebSocket)
+		s.mux.HandleFunc("GET /preview", s.handleAliasPreview)
 		s.mux.HandleFunc("GET /{$}", s.handlePublicHome)
 		s.mux.HandleFunc("GET /{path...}", s.handleRedirect)
 		return
 
 	case modeAdmin:
+		s.mux.Handle("GET /metrics", promhttp.Handler())
 		s.mux.HandleFunc("GET /{$}", s.handleAdminHome)
 		s.mux.HandleFunc("GET /login", s.handleLoginPage)
 		s.mux.HandleFunc("POST /login", s.handleLogin)
@@ -122,6 +129,9 @@ func (s *Server) routes() {
 
 	default:
 		// Combined server for backward compatibility.
+		s.mux.HandleFunc("GET /ws/health", s.handleHealthWebSocket)
+		s.mux.HandleFunc("GET /preview", s.handleAliasPreview)
+		s.mux.Handle("GET /metrics", promhttp.Handler())
 		s.mux.HandleFunc("GET /{$}", s.handleAdminHome)
 		s.mux.HandleFunc("GET /login", s.handleLoginPage)
 		s.mux.HandleFunc("POST /login", s.handleLogin)

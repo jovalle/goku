@@ -47,18 +47,18 @@ Without `GOKU_ADMIN_PASSWORD`, the admin UI is open (no logout button shown).
 
 - Alias-based redirects with placeholder support (`{}` and named placeholders)
 - Public and admin endpoints split by port (`:9000` and `:9001`)
-- Live health JSON (`/healthz`) and WebSocket stream (`/ws/health`)
+- Live health JSON (`/healthz`) on both ports and WebSocket stream (`/ws/health`) on public
 - Admin alias directory with:
   - search
   - sortable columns
   - add / edit / delete
   - enable / disable toggle
   - clickable destination links
-  - clickable alias preview page with countdown redirect
+  - clickable alias preview page with countdown redirect via public endpoint
 - API key + optional password authentication for admin/API operations
 - Config live-reload from disk
 - Dashboard/API alias changes are written back to `config/config.yaml` for persistence
-- Prometheus metrics (`/metrics`)
+- Prometheus metrics (`/metrics`) on admin
 
 ## Configuration
 
@@ -96,6 +96,7 @@ Public (`:9000`):
 | ------ | ------------ | ----------------------- |
 | `GET`  | `/`          | Public status page      |
 | `GET`  | `/{path...}` | Alias redirect          |
+| `GET`  | `/preview`   | Alias redirect preview  |
 | `GET`  | `/healthz`   | Health JSON             |
 | `GET`  | `/ws/health` | Health WebSocket stream |
 
@@ -107,7 +108,7 @@ Admin (`:9001`):
 | `GET`  | `/login`                   | Login page (when password auth is enabled) |
 | `POST` | `/login`                   | Create admin session                       |
 | `POST` | `/logout`                  | Clear admin session                        |
-| `GET`  | `/preview?alias=<pattern>` | Alias redirect preview page                |
+| `GET`  | `/metrics`                 | Prometheus metrics                         |
 | `GET`  | `/api/aliases`             | List aliases                               |
 | `POST` | `/api/aliases`             | Create/update alias                        |
 | `POST` | `/api/aliases/edit`        | Edit alias                                 |
@@ -124,6 +125,7 @@ Admin (`:9001`):
 | `GOKU_ADMIN_PORT`     | `9001`               | Admin endpoint port                            |
 | `GOKU_WEB_PORT`       | `9001`               | Backward-compatible admin port fallback        |
 | `GOKU_CONFIG`         | `config/config.yaml` | Config file path                               |
+| `GOKU_PUBLIC_BASE_URL`| _(empty)_            | Absolute public base URL used for admin preview links |
 | `GOKU_ADMIN_USERNAME` | `admin`              | Username for basic auth compatibility          |
 | `GOKU_ADMIN_PASSWORD` | _(empty)_            | Enables login page + session auth for admin UI |
 | `GOKU_API_KEY`        | _(generated/file)_   | Admin API bearer token                         |
