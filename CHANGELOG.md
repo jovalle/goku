@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0](https://github.com/jovalle/goku/compare/v1.1.0...v1.2.0) (2026-04-10)
+
+
+### Features
+
+* **core:** migrate to alias-first config/store with legacy compatibility ([b9a2740](https://github.com/jovalle/goku/commit/b9a274084b2b03b94250c83af3a18c4406c6ea00))
+* move logo image to assets ([50fb1c5](https://github.com/jovalle/goku/commit/50fb1c569b40175804905a0f8313aeb005cba2d4))
+* **server:** split public/admin endpoints with session auth, alias APIs, and health streaming ([4e36082](https://github.com/jovalle/goku/commit/4e36082bc063066525b2dc70ec1d52bda89a5c3b))
+
 ## [1.1.0](https://github.com/jovalle/goku/compare/v1.0.0...v1.1.0) (2026-04-01)
 
 
