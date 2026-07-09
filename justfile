@@ -48,6 +48,14 @@ build:
 vulncheck:
   go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+# Propagate the go.mod Go version to the CI/release workflows and Dockerfile.
+sync-versions:
+  @gv="$(awk '/^go [0-9]/ {print $2; exit}' go.mod)"; \
+  GV="$gv" perl -i -pe 's/(go-version:\s*")[\d.]+(")/$1$ENV{GV}$2/' \
+    .github/workflows/ci.yml .github/workflows/release.yml; \
+  GV="$gv" perl -i -pe 's/(golang:)[\d.]+(-alpine)/$1$ENV{GV}$2/' Dockerfile; \
+  echo "Synced Go version to $gv across workflows and Dockerfile"
+
 run:
   go run ./cmd/goku
 
@@ -57,4 +65,4 @@ docker:
 clean:
   rm -rf bin/ coverage.out
 
-ci: lint test build vulncheck
+ci: sync-versions lint test build vulncheck
