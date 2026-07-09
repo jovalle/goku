@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/jovalle/goku/compare/v1.3.0...v1.4.0) (2026-07-09)
+
+
+### Features
+
+* enhance UX for desktop and mobile ([acd3917](https://github.com/jovalle/goku/commit/acd3917936ad9a6958fe9270a2f0125f61169ea5))
+
+
+### Bug Fixes
+
+* **git:** add vulncheck to catch gaps locally ([f677440](https://github.com/jovalle/goku/commit/f677440eaae609d1451cd7eda4b1bf798f062fe9))
+* **git:** sync golang version ([3cd2a6c](https://github.com/jovalle/goku/commit/3cd2a6c5347307590512f543de52b87bdbac942f))
+
 ## [1.3.0](https://github.com/jovalle/goku/compare/v1.2.0...v1.3.0) (2026-04-13)
 
 
