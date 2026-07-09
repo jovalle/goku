@@ -45,6 +45,9 @@ build:
   go build -ldflags="-X main.version={{version}} -X main.commit={{commit}} -X main.date={{date}}" \
     -o bin/goku ./cmd/goku
 
+vulncheck:
+  go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
 run:
   go run ./cmd/goku
 
@@ -54,4 +57,4 @@ docker:
 clean:
   rm -rf bin/ coverage.out
 
-ci: lint test build
+ci: lint test build vulncheck
