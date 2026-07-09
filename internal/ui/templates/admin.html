@@ -1,45 +1,731 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Goku</title>
+    <script>
+      (() => {
+        const storageKey = 'goku-theme';
+        let theme = 'light';
+        try {
+          theme =
+            localStorage.getItem(storageKey) ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } catch (err) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-bs-theme', theme);
+      })();
+    </script>
+    <link rel="icon" type="image/png" sizes="256x256" href="/static/favicon.png?v=2" />
+    <link rel="shortcut icon" href="/favicon.ico?v=2" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      .btn-symbol {
+        align-items: center;
+        display: inline-flex;
+        height: 2.5rem;
+        flex: 0 0 2.5rem !important;
+        justify-content: center;
+        min-width: 2.75rem;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+        font-weight: 700;
+      }
+
+      .btn-symbol svg {
+        height: 1.2rem;
+        stroke-width: 2;
+        width: 1.2rem;
+      }
+
+      .theme-toggle {
+        bottom: 1rem;
+        position: fixed;
+        right: 1rem;
+        top: auto;
+        z-index: 1050;
+      }
+
+      .theme-toggle .theme-icon-light {
+        display: none;
+      }
+
+      [data-bs-theme='dark'] .theme-toggle .theme-icon-dark {
+        display: none;
+      }
+
+      [data-bs-theme='dark'] .theme-toggle .theme-icon-light {
+        display: block;
+      }
+
+      .header-search {
+        flex: 1 1 18rem;
+        max-width: 30rem;
+      }
+
+      .header-actions {
+        flex: 0 0 auto;
+      }
+
+      .add-alias-button {
+        transition:
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+
+      .add-alias-button:hover {
+        transform: translateY(-1px);
+      }
+
+      .alias-action-group {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.35rem;
+        justify-content: flex-end;
+        position: relative;
+        width: 9.45rem;
+      }
+
+      .alias-table {
+        table-layout: fixed;
+      }
+
+      .health-cell {
+        text-align: center;
+        width: 2.25rem;
+      }
+
+      .alias-cell {
+        width: clamp(5rem, 16vw, 12rem);
+        white-space: nowrap;
+      }
+
+      .alias-cell,
+      .destination-cell {
+        min-width: 0;
+      }
+
+      .actions-cell {
+        width: 10.25rem;
+      }
+
+      .alias-link,
+      .destination-link,
+      .alias-link code {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+        white-space: nowrap;
+      }
+
+      .alias-link,
+      .destination-link {
+        display: block;
+      }
+
+      .alias-link code {
+        display: block;
+      }
+
+      .destination-link {
+        min-width: 0;
+      }
+
+      .health-dot {
+        background: var(--bs-secondary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 999px;
+        flex: 0 0 auto;
+        height: 0.58rem;
+        transition:
+          background-color 180ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
+        width: 0.58rem;
+      }
+
+      .health-dot.is-checking {
+        animation: health-pulse 900ms ease-in-out infinite;
+      }
+
+      .health-dot.is-updated {
+        animation: health-pop 320ms ease-out;
+      }
+
+      .health-dot[data-state='online'] {
+        background: var(--bs-success);
+        border-color: var(--bs-success);
+        box-shadow: 0 0 0 0.18rem rgba(var(--bs-success-rgb), 0.14);
+      }
+
+      .health-dot[data-state='warning'] {
+        background: var(--bs-warning);
+        border-color: var(--bs-warning);
+        box-shadow: 0 0 0 0.18rem rgba(var(--bs-warning-rgb), 0.16);
+      }
+
+      .health-dot[data-state='offline'] {
+        background: var(--bs-danger);
+        border-color: var(--bs-danger);
+        box-shadow: 0 0 0 0.18rem rgba(var(--bs-danger-rgb), 0.13);
+      }
+
+      .health-cell .health-dot {
+        display: inline-block;
+        vertical-align: middle;
+      }
+
+      .header-stats {
+        color: var(--bs-secondary-color);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.82rem;
+        gap: 0.35rem;
+        margin-top: 0.1rem;
+      }
+
+      .header-stat {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.28rem;
+        white-space: nowrap;
+      }
+
+      .header-stat::before {
+        background: var(--bs-border-color);
+        border-radius: 999px;
+        content: '';
+        height: 0.35rem;
+        width: 0.35rem;
+      }
+
+      .header-stat[data-state='online']::before {
+        background: var(--bs-success);
+      }
+
+      .header-stat[data-state='warning']::before {
+        background: var(--bs-warning);
+      }
+
+      .header-stat[data-state='offline']::before {
+        background: var(--bs-danger);
+      }
+
+      .alias-action-button {
+        align-items: center;
+        border-radius: 0.5rem !important;
+        box-sizing: border-box;
+        display: inline-flex;
+        flex: 0 0 2.5rem !important;
+        height: 2.5rem;
+        justify-content: center;
+        line-height: 1;
+        min-width: 2.5rem;
+        padding: 0;
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          color 160ms ease,
+          opacity 160ms ease,
+          transform 160ms ease;
+        width: 2.5rem;
+      }
+
+      .alias-action-button:hover {
+        box-shadow: 0 0.35rem 0.8rem rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .alias-action-button:disabled {
+        cursor: wait;
+        opacity: 0.64;
+      }
+
+      .alias-action-button svg {
+        display: block;
+        height: 1rem;
+        margin: auto;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+        width: 1rem;
+      }
+
+      .alias-action-group form {
+        display: contents;
+      }
+
+      .state-toggle {
+        align-items: center;
+        border-radius: 999px;
+        border-width: 1px;
+        box-sizing: border-box;
+        display: inline-flex;
+        flex: 0 0 3.75rem !important;
+        height: 2.25rem;
+        justify-content: flex-start;
+        line-height: 1;
+        min-width: 3.75rem;
+        overflow: hidden;
+        padding: 0.1875rem;
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+        width: 3.75rem;
+      }
+
+      .state-toggle:hover {
+        transform: translateY(-1px);
+      }
+
+      .state-toggle[data-enabled='1'] {
+        background: var(--bs-success);
+        border-color: var(--bs-success);
+        color: var(--bs-success);
+      }
+
+      .state-toggle[data-enabled='0'] {
+        background: var(--bs-tertiary-bg);
+        border-color: var(--bs-border-color);
+        color: var(--bs-secondary-color);
+      }
+
+      .state-toggle:disabled {
+        opacity: 0.72;
+      }
+
+      .state-toggle-track {
+        align-items: center;
+        display: flex;
+        height: 100%;
+        position: relative;
+        width: 100%;
+      }
+
+      .state-toggle-thumb {
+        align-items: center;
+        background: var(--bs-white);
+        border-radius: 999px;
+        box-shadow: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.18);
+        display: inline-flex;
+        height: 1.75rem;
+        justify-content: center;
+        position: relative;
+        transform: translateX(0);
+        transition:
+          color 160ms ease,
+          transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        width: 1.75rem;
+      }
+
+      .state-toggle[data-enabled='1'] .state-toggle-thumb {
+        transform: translateX(1.5rem);
+      }
+
+      .state-toggle svg {
+        display: block;
+        height: 0.9rem;
+        left: 50%;
+        position: absolute;
+        top: 50%;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2.35;
+        transition:
+          opacity 140ms ease,
+          transform 140ms ease;
+        width: 0.9rem;
+      }
+
+      .state-toggle .state-icon-off,
+      .state-toggle[data-enabled='0'] .state-icon-on {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.72);
+      }
+
+      .state-toggle .state-icon-on,
+      .state-toggle[data-enabled='0'] .state-icon-off {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .alias-toggle-form,
+      .delete-confirm-form {
+        flex: 0 0 auto;
+      }
+
+      .delete-confirm-form {
+        align-items: center;
+        display: contents;
+      }
+
+      .delete-confirm-actions {
+        display: none;
+        gap: 0.35rem;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(0.15rem) scale(0.98);
+        transition:
+          opacity 140ms ease,
+          transform 160ms ease;
+      }
+
+      .alias-action-group.is-confirming .edit-alias,
+      .alias-action-group.is-confirming .delete-arm {
+        display: none;
+      }
+
+      .alias-action-group.is-confirming .delete-confirm-actions {
+        display: inline-flex;
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0) scale(1);
+      }
+
+      .search-shell {
+        position: relative;
+      }
+
+      .search-shell .form-control {
+        padding-right: 3rem;
+      }
+
+      .shortcut-kbd {
+        align-items: center;
+        background: var(--bs-tertiary-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.375rem;
+        color: var(--bs-secondary-color);
+        display: inline-flex;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        font-weight: 600;
+        height: 1.5rem;
+        justify-content: center;
+        min-width: 1.5rem;
+        padding: 0 0.35rem;
+      }
+
+      .search-shortcut {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      .btn-with-icon {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.45rem;
+      }
+
+      .btn-with-icon svg {
+        height: 1.1rem;
+        stroke-width: 2;
+        width: 1.1rem;
+      }
+
+      .modal-close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        z-index: 1;
+      }
+
+      .modal-body-minimal {
+        padding-top: 2.75rem;
+      }
+
+      .form-control.is-warning {
+        border-color: var(--bs-warning);
+        padding-right: calc(1.5em + 0.75rem);
+      }
+
+      .form-control.is-warning:focus {
+        border-color: var(--bs-warning);
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-warning-rgb), 0.25);
+      }
+
+      .warning-feedback {
+        color: var(--bs-warning-text-emphasis);
+        display: block;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+      }
+
+      tr[data-row] {
+        transition:
+          background-color 180ms ease,
+          box-shadow 180ms ease,
+          opacity 180ms ease;
+      }
+
+      tr[data-row].is-state-changing {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-primary-rgb), 0.06);
+      }
+
+      tr[data-row].is-invalid {
+        box-shadow: inset 0 0 0 999px rgba(var(--bs-danger-rgb), 0.08);
+      }
+
+      @keyframes health-pulse {
+        0%,
+        100% {
+          opacity: 0.5;
+          transform: scale(0.82);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.12);
+        }
+      }
+
+      @keyframes health-pop {
+        0% {
+          transform: scale(0.7);
+        }
+        70% {
+          transform: scale(1.22);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @media (max-width: 767.98px) {
+        .theme-toggle {
+          bottom: auto;
+          top: 1rem;
+        }
+
+        main.container {
+          padding-left: 0.75rem;
+          padding-right: 0.75rem;
+          padding-bottom: 8.5rem !important;
+        }
+
+        .header-search {
+          flex-basis: 100%;
+          max-width: none;
+          order: 3;
+        }
+
+        .add-alias-button {
+          border-radius: 999px;
+          bottom: 1rem;
+          box-shadow: 0 0.75rem 1.75rem rgba(var(--bs-primary-rgb), 0.35);
+          height: 3.25rem;
+          min-width: 3.25rem;
+          padding: 0;
+          position: fixed;
+          right: 1rem;
+          width: 3.25rem;
+          z-index: 1040;
+        }
+
+        .alias-table-shell {
+          overflow-x: clip;
+        }
+
+        .alias-table,
+        .alias-table tbody,
+        .alias-table tr[data-row],
+        .alias-table th,
+        .alias-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .alias-table thead {
+          display: none;
+        }
+
+        .alias-table tr[data-row] {
+          --bs-table-accent-bg: transparent;
+          --bs-table-bg: transparent;
+          --bs-table-bg-state: transparent;
+          --bs-table-bg-type: transparent;
+          --bs-table-hover-bg: transparent;
+          --bs-table-striped-bg: transparent;
+          background: var(--bs-body-bg) !important;
+          border-bottom: 1px solid var(--bs-border-color);
+          padding: 0.8rem 0.85rem;
+          position: relative;
+        }
+
+        .alias-table tr[data-row].table-secondary {
+          background: var(--bs-body-bg) !important;
+        }
+
+        .alias-table tr[data-row][data-enabled='0'] {
+          opacity: 0.62;
+        }
+
+        .alias-table tr[data-row].is-state-changing {
+          box-shadow: inset 0.2rem 0 0 var(--bs-primary);
+        }
+
+        .alias-table tr[data-row] > td {
+          --bs-table-accent-bg: transparent;
+          --bs-table-bg: transparent;
+          --bs-table-bg-state: transparent;
+          --bs-table-bg-type: transparent;
+          --bs-table-hover-bg: transparent;
+          --bs-table-striped-bg: transparent;
+          background: transparent !important;
+          border: 0;
+          box-shadow: none !important;
+          min-width: 0;
+          padding: 0;
+        }
+
+        .alias-table tr[data-row] > td + td {
+          margin-top: 0.18rem;
+        }
+
+        .alias-cell,
+        .destination-cell,
+        .health-cell,
+        .actions-cell {
+          width: auto;
+        }
+
+        .health-cell {
+          position: absolute;
+          right: 0.85rem;
+          top: 0.85rem;
+          width: auto !important;
+          z-index: 1;
+        }
+
+        .health-cell .health-dot {
+          height: 0.72rem;
+          width: 0.72rem;
+        }
+
+        .alias-link code {
+          font-size: 0.95rem;
+          padding-right: 1.4rem;
+        }
+
+        .destination-link {
+          color: var(--bs-secondary-color);
+          font-size: 0.875rem;
+        }
+
+        .actions-cell {
+          margin-top: 0.55rem !important;
+          text-align: right !important;
+        }
+
+        .alias-action-group {
+          align-items: flex-end !important;
+          justify-content: flex-end !important;
+          max-width: 100%;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-body-tertiary">
     <main class="container py-4">
       <header class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
           <img src="/static/logo.png" alt="goku" width="42" height="42" />
           <div>
             <h1 class="h4 mb-0">Goku</h1>
+            <div class="header-stats" aria-label="Golink stats">
+              <span class="header-stat" id="healthy-golink-stat" data-state="warning"
+                ><span id="healthy-golink-count">--</span>/<span id="healthy-golink-total">{{ .AliasCount }}</span>
+                healthy</span
+              >
+            </div>
           </div>
         </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addAliasModal">
-            +New golink
+        <div class="header-search">
+          <label for="alias-search" class="visually-hidden">Search golinks</label>
+          <div class="search-shell">
+            <input
+              id="alias-search"
+              class="form-control"
+              placeholder="Search golinks"
+              aria-keyshortcuts="/"
+              autocomplete="off"
+            />
+            <kbd class="shortcut-kbd search-shortcut">/</kbd>
+          </div>
+        </div>
+        <div class="header-actions d-flex gap-2">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-symbol theme-toggle"
+            data-theme-toggle
+            aria-label="Switch to dark mode"
+            title="Switch to dark mode"
+          >
+            <svg class="theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+            </svg>
+            <svg class="theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+            <span class="visually-hidden">Toggle dark mode</span>
+          </button>
+          <button
+            class="btn btn-primary btn-symbol add-alias-button"
+            type="button"
+            data-bs-toggle="modal"
+            data-bs-target="#addAliasModal"
+            aria-label="Add golink"
+            title="Add golink"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            <span class="visually-hidden">Add golink</span>
           </button>
           {{ if .ShowLogout }}
           <form method="post" action="/logout">
-            <button type="submit" class="btn btn-outline-secondary">Log out</button>
+            <button type="submit" class="btn btn-outline-secondary btn-symbol" aria-label="Log out" title="Log out">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+              <span class="visually-hidden">Log out</span>
+            </button>
           </form>
           {{ end }}
         </div>
       </header>
 
-      <section class="card mb-3">
-        <div class="card-body">
-          <label for="alias-search" class="form-label mb-1">Search golinks</label>
-          <input id="alias-search" class="form-control" placeholder="Type to filter golinks" />
-        </div>
-      </section>
-
       <section class="card overflow-hidden">
-        <div class="table-responsive">
-          <table class="table table-striped table-hover align-middle mb-0">
+        <div class="table-responsive alias-table-shell">
+          <table class="table table-striped table-hover align-middle mb-0 alias-table">
             <thead>
               <tr>
-                <th>
+                <th class="health-cell" aria-label="Health"></th>
+                <th class="alias-cell">
                   <button
                     type="button"
                     class="btn p-0 border-0 bg-transparent text-body-emphasis text-decoration-none fw-semibold sort-col"
@@ -48,7 +734,7 @@
                     Alias
                   </button>
                 </th>
-                <th>
+                <th class="destination-cell">
                   <button
                     type="button"
                     class="btn p-0 border-0 bg-transparent text-body-emphasis text-decoration-none fw-semibold sort-col"
@@ -57,16 +743,7 @@
                     Destination
                   </button>
                 </th>
-                <th>
-                  <button
-                    type="button"
-                    class="btn p-0 border-0 bg-transparent text-body-emphasis text-decoration-none fw-semibold sort-col"
-                    data-sort-key="enabled"
-                  >
-                    Enabled
-                  </button>
-                </th>
-                <th class="text-end">Actions</th>
+                <th class="text-end actions-cell">Actions</th>
               </tr>
             </thead>
             <tbody id="alias-body">
@@ -78,64 +755,123 @@
                 data-enabled="{{ if .IsEnabled }}1{{ else }}0{{ end }}"
                 class="{{ if not .IsEnabled }}table-secondary{{ end }}"
               >
-                <td>
+                <td class="health-cell">
+                  <span class="health-dot" data-health-dot data-state="unknown" title="Health not checked"></span>
+                </td>
+                <td class="alias-cell">
                   <a
                     href="{{ if $.PreviewBaseURL }}{{ $.PreviewBaseURL }}{{ end }}/preview?alias={{ .Alias | urlquery }}"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="link-body-emphasis"
+                    class="link-body-emphasis alias-link"
                   >
-                    <code>{{ .Alias }}</code>
+                    <code>{{ displayPlaceholder .Alias }}</code>
                   </a>
                 </td>
-                <td class="text-break">
-                  <a href="{{ .Destination }}" target="_blank" rel="noopener noreferrer">{{ .Destination }}</a>
-                </td>
-                <td>
-                  <form
-                    method="post"
-                    action="/api/aliases/toggle"
-                    class="d-inline-flex align-items-center alias-toggle-form"
+                <td class="destination-cell">
+                  <a
+                    href="{{ destinationHref .Alias .Destination }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="destination-link"
+                    >{{ displayPlaceholder .Destination }}</a
                   >
-                    <input type="hidden" name="alias" value="{{ .Alias }}" />
-                    <input
-                      type="hidden"
-                      name="enabled"
-                      value="{{ if .IsEnabled }}1{{ else }}0{{ end }}"
-                      class="enabled-value"
-                    />
-                    <div class="form-check form-switch m-0">
-                      <input
-                        type="checkbox"
-                        class="form-check-input alias-toggle-input"
-                        role="switch"
-                        aria-label="Toggle {{ .Alias }}"
-                        {{
-                        if
-                        .IsEnabled
-                        }}checked{{
-                        end
-                        }}
-                      />
-                    </div>
-                  </form>
                 </td>
-                <td class="text-end">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-primary edit-alias"
-                    data-bs-toggle="modal"
-                    data-bs-target="#editAliasModal"
-                    data-alias="{{ .Alias }}"
-                    data-destination="{{ .Destination }}"
-                    data-enabled="{{ if .IsEnabled }}1{{ else }}0{{ end }}"
-                  >
-                    Edit
-                  </button>
-                  <form method="post" action="/api/aliases/delete" class="d-inline">
-                    <input type="hidden" name="alias" value="{{ .Alias }}" />
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                  </form>
+                <td class="text-end actions-cell">
+                  <div class="alias-action-group" role="group" aria-label="Actions for {{ .Alias }}">
+                    <form
+                      method="post"
+                      action="/api/aliases/toggle"
+                      class="d-inline-flex align-items-center alias-toggle-form"
+                    >
+                      <input type="hidden" name="alias" value="{{ .Alias }}" />
+                      <button
+                        type="submit"
+                        name="enabled"
+                        value="{{ if .IsEnabled }}0{{ else }}1{{ end }}"
+                        class="btn btn-sm state-toggle alias-toggle-button"
+                        data-enabled="{{ if .IsEnabled }}1{{ else }}0{{ end }}"
+                        aria-pressed="{{ if .IsEnabled }}true{{ else }}false{{ end }}"
+                        aria-label="{{ if .IsEnabled }}Disable{{ else }}Enable{{ end }} {{ .Alias }}"
+                        title="{{ if .IsEnabled }}Enabled. Click to disable.{{ else }}Disabled. Click to enable.{{ end }}"
+                      >
+                        <span class="state-toggle-track" aria-hidden="true">
+                          <span class="state-toggle-thumb">
+                            <svg class="state-icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                            <svg class="state-icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path d="M18 6 6 18" />
+                              <path d="m6 6 12 12" />
+                            </svg>
+                          </span>
+                        </span>
+                        <span class="visually-hidden">{{ if .IsEnabled }}Enabled{{ else }}Disabled{{ end }}</span>
+                      </button>
+                    </form>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary alias-action-button edit-alias"
+                      data-bs-toggle="modal"
+                      data-bs-target="#editAliasModal"
+                      data-alias="{{ .Alias }}"
+                      data-destination="{{ .Destination }}"
+                      data-enabled="{{ if .IsEnabled }}1{{ else }}0{{ end }}"
+                      aria-label="Edit {{ .Alias }}"
+                      title="Edit"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                      <span class="visually-hidden">Edit</span>
+                    </button>
+                    <form method="post" action="/api/aliases/delete" class="delete-confirm-form">
+                      <input type="hidden" name="alias" value="{{ .Alias }}" />
+                      <button
+                        type="submit"
+                        class="btn btn-sm btn-outline-danger alias-action-button delete-arm"
+                        aria-label="Delete {{ .Alias }}"
+                        title="Delete"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v5" />
+                          <path d="M14 11v5" />
+                        </svg>
+                        <span class="visually-hidden">Delete</span>
+                      </button>
+                      <span class="delete-confirm-actions" aria-label="Confirm delete {{ .Alias }}">
+                        <button
+                          type="submit"
+                          class="btn btn-sm btn-danger alias-action-button"
+                          data-delete-confirm
+                          aria-label="Confirm delete {{ .Alias }}"
+                          title="Confirm delete"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                          <span class="visually-hidden">Confirm</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary alias-action-button"
+                          data-delete-cancel
+                          aria-label="Cancel delete {{ .Alias }}"
+                          title="Cancel"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                            <path d="M18 6 6 18" />
+                            <path d="m6 6 12 12" />
+                          </svg>
+                          <span class="visually-hidden">Cancel</span>
+                        </button>
+                      </span>
+                    </form>
+                  </div>
                 </td>
               </tr>
               {{ end }} {{ else }}
@@ -146,70 +882,109 @@
             </tbody>
           </table>
         </div>
-        <div class="card-footer text-muted small">Total golinks: {{ .AliasCount }}</div>
       </section>
     </main>
 
-    <div class="modal fade" id="addAliasModal" tabindex="-1" aria-labelledby="addAliasModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addAliasModal" tabindex="-1" aria-label="Add golink" aria-hidden="true">
       <div class="modal-dialog">
-        <div class="modal-content">
-          <form method="post" action="/api/aliases">
-            <div class="modal-header">
-              <h2 class="modal-title fs-5" id="addAliasModalLabel">Add golink</h2>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
+        <div class="modal-content position-relative">
+          <button type="button" class="btn-close modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <form method="post" action="/api/aliases" id="add-alias-form" data-validation-form>
+            <div class="modal-body modal-body-minimal">
               <div class="mb-3">
                 <label class="form-label" for="alias-input">Alias</label>
-                <input id="alias-input" name="alias" class="form-control" placeholder="gh/{owner}/{repo}" required />
+                <input
+                  id="alias-input"
+                  name="alias"
+                  class="form-control alias-validation-input"
+                  placeholder="gh/{owner}/{repo}"
+                  autocomplete="off"
+                  required
+                />
+                <div class="field-feedback" data-feedback-for="alias-input"></div>
               </div>
               <div>
                 <label class="form-label" for="destination-input">Destination</label>
                 <input
                   id="destination-input"
                   name="destination"
-                  class="form-control"
-                  placeholder="https://github.com/{owner}/{repo}"
+                  class="form-control destination-validation-input"
+                  placeholder="github.com/{owner}/{repo}"
+                  autocomplete="off"
                   required
                 />
+                <div class="field-feedback" data-feedback-for="destination-input"></div>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save golink</button>
+              <button type="button" class="btn btn-outline-secondary btn-with-icon" data-bs-dismiss="modal">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary btn-with-icon" data-submit-button>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                  <path d="M17 21v-8H7v8" />
+                  <path d="M7 3v5h8" />
+                </svg>
+                Save
+              </button>
             </div>
           </form>
         </div>
       </div>
     </div>
 
-    <div class="modal fade" id="editAliasModal" tabindex="-1" aria-labelledby="editAliasModalLabel" aria-hidden="true">
+    <div class="modal fade" id="editAliasModal" tabindex="-1" aria-label="Edit golink" aria-hidden="true">
       <div class="modal-dialog">
-        <div class="modal-content">
-          <form method="post" action="/api/aliases/edit" id="edit-alias-form">
-            <div class="modal-header">
-              <h2 class="modal-title fs-5" id="editAliasModalLabel">Edit golink</h2>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
+        <div class="modal-content position-relative">
+          <button type="button" class="btn-close modal-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <form method="post" action="/api/aliases/edit" id="edit-alias-form" data-validation-form>
+            <div class="modal-body modal-body-minimal">
               <input type="hidden" id="edit-old-alias" name="old_alias" />
               <div class="mb-3">
                 <label class="form-label" for="edit-alias-input">Alias</label>
-                <input id="edit-alias-input" name="alias" class="form-control" required />
+                <input
+                  id="edit-alias-input"
+                  name="alias"
+                  class="form-control alias-validation-input"
+                  autocomplete="off"
+                  required
+                />
+                <div class="field-feedback" data-feedback-for="edit-alias-input"></div>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="edit-destination-input">Destination</label>
-                <input id="edit-destination-input" name="destination" class="form-control" required />
+                <input
+                  id="edit-destination-input"
+                  name="destination"
+                  class="form-control destination-validation-input"
+                  autocomplete="off"
+                  required
+                />
+                <div class="field-feedback" data-feedback-for="edit-destination-input"></div>
               </div>
-              <div class="form-check">
-                <input type="hidden" id="edit-enabled-hidden" name="enabled" value="0" />
-                <input class="form-check-input" type="checkbox" id="edit-enabled-check" value="1" />
-                <label class="form-check-label" for="edit-enabled-check">Enabled</label>
-              </div>
+              <input type="hidden" id="edit-enabled-hidden" name="enabled" value="0" />
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save changes</button>
+              <button type="button" class="btn btn-outline-secondary btn-with-icon" data-bs-dismiss="modal">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary btn-with-icon" data-submit-button>
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+                  <path d="M17 21v-8H7v8" />
+                  <path d="M7 3v5h8" />
+                </svg>
+                Save
+              </button>
             </div>
           </form>
         </div>
@@ -217,11 +992,45 @@
     </div>
 
     <script>
+      (() => {
+        const storageKey = 'goku-theme';
+
+        function currentTheme() {
+          return document.documentElement.getAttribute('data-bs-theme') || 'light';
+        }
+
+        function paintThemeToggle(toggle) {
+          const isDark = currentTheme() === 'dark';
+          const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+          toggle.setAttribute('aria-label', label);
+          toggle.setAttribute('title', label);
+        }
+
+        function setTheme(theme) {
+          document.documentElement.setAttribute('data-bs-theme', theme);
+          try {
+            localStorage.setItem(storageKey, theme);
+          } catch (err) {}
+          document.querySelectorAll('[data-theme-toggle]').forEach(paintThemeToggle);
+        }
+
+        document.querySelectorAll('[data-theme-toggle]').forEach((toggle) => {
+          paintThemeToggle(toggle);
+          toggle.addEventListener('click', () => {
+            setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+          });
+        });
+      })();
+
       const search = document.getElementById('alias-search');
       const aliasBody = document.getElementById('alias-body');
       const rows = Array.from(document.querySelectorAll('[data-row]'));
       const sortButtons = Array.from(document.querySelectorAll('.sort-col'));
+      const healthyGolinkCount = document.getElementById('healthy-golink-count');
+      const healthyGolinkTotal = document.getElementById('healthy-golink-total');
+      const healthyGolinkStat = document.getElementById('healthy-golink-stat');
       const sortState = { key: 'alias', direction: 'asc' };
+      let statusPollTimer = 0;
 
       function fuzzy(q, s) {
         q = q.toLowerCase().trim();
@@ -282,17 +1091,203 @@
         filterRows();
       }
 
+      function setHealthyStats(healthy, total) {
+        healthyGolinkCount.textContent = String(healthy);
+        healthyGolinkTotal.textContent = String(total);
+        const ratio = total > 0 ? healthy / total : 1;
+        if (ratio >= 1) {
+          healthyGolinkStat.dataset.state = 'online';
+        } else if (ratio >= 0.8) {
+          healthyGolinkStat.dataset.state = 'warning';
+        } else {
+          healthyGolinkStat.dataset.state = 'offline';
+        }
+      }
+
+      function scheduleStatusPoll(seconds) {
+        window.clearTimeout(statusPollTimer);
+        const delay = Math.max(Number(seconds) || 60, 10) * 1000;
+        statusPollTimer = window.setTimeout(() => loadAliasStatuses(), delay);
+      }
+
+      async function loadAliasStatuses() {
+        rows.forEach((row) => {
+          const dot = row.querySelector('[data-health-dot]');
+          if (!dot) return;
+          dot.classList.add('is-checking');
+          dot.title = 'Checking health';
+        });
+        try {
+          const response = await fetch('/api/aliases/status', {
+            cache: 'no-store',
+            headers: { Accept: 'application/json' },
+          });
+          if (!response.ok) throw new Error('status failed');
+          const payload = await response.json();
+          const items = Array.isArray(payload.items) ? payload.items : [];
+          const byAlias = new Map(items.map((item) => [item.alias, item]));
+          let healthy = 0;
+          rows.forEach((row) => {
+            const item = byAlias.get(row.dataset.alias);
+            const dot = row.querySelector('[data-health-dot]');
+            if (!dot) return;
+            dot.classList.remove('is-checking');
+            if (!item) return;
+            const previousState = dot.dataset.state;
+            dot.dataset.state = item.state || 'unknown';
+            dot.title = item.detail || 'Health checked';
+            if (previousState !== dot.dataset.state) {
+              dot.classList.remove('is-updated');
+              void dot.offsetWidth;
+              dot.classList.add('is-updated');
+            }
+            if (item.state === 'online') healthy++;
+          });
+          setHealthyStats(healthy, items.length || rows.length);
+          scheduleStatusPoll(payload.poll_after_seconds);
+        } catch (err) {
+          rows.forEach((row) => row.querySelector('[data-health-dot]')?.classList.remove('is-checking'));
+          healthyGolinkCount.textContent = '--';
+          healthyGolinkStat.dataset.state = 'warning';
+          scheduleStatusPoll(60);
+        }
+      }
+
       const editButtons = Array.from(document.querySelectorAll('.edit-alias'));
       const oldAliasInput = document.getElementById('edit-old-alias');
       const aliasInput = document.getElementById('edit-alias-input');
       const destinationInput = document.getElementById('edit-destination-input');
-      const enabledCheck = document.getElementById('edit-enabled-check');
       const enabledHidden = document.getElementById('edit-enabled-hidden');
-      const aliasToggleInputs = Array.from(document.querySelectorAll('.alias-toggle-input'));
+      const aliasToggleForms = Array.from(document.querySelectorAll('.alias-toggle-form'));
       const deleteForms = Array.from(document.querySelectorAll('form[action="/api/aliases/delete"]'));
+      const validationForms = Array.from(document.querySelectorAll('[data-validation-form]'));
 
-      function syncEnabledValue() {
-        enabledHidden.value = enabledCheck.checked ? '1' : '0';
+      function validationParams(form) {
+        const aliasField = form.querySelector('.alias-validation-input');
+        const destinationField = form.querySelector('.destination-validation-input');
+        const oldAliasField = form.querySelector('input[name="old_alias"]');
+        const params = new URLSearchParams({
+          alias: aliasField ? aliasField.value : '',
+          destination: destinationField ? destinationField.value : '',
+          old_alias: oldAliasField ? oldAliasField.value : '',
+        });
+        return { aliasField, destinationField, params };
+      }
+
+      function feedbackFor(input) {
+        return input ? document.querySelector(`[data-feedback-for="${input.id}"]`) : null;
+      }
+
+      function clearValidation(input) {
+        if (!input) return;
+        input.classList.remove('is-valid', 'is-invalid', 'is-warning');
+        const feedback = feedbackFor(input);
+        if (!feedback) return;
+        feedback.className = 'field-feedback';
+        feedback.textContent = '';
+      }
+
+      function setPending(input) {
+        clearValidation(input);
+        const feedback = feedbackFor(input);
+        if (!feedback || !input.value.trim()) return;
+        feedback.className = 'form-text text-muted';
+        feedback.textContent = 'Checking...';
+      }
+
+      function validationMessage(input, field) {
+        if (!field || !field.message) return '';
+        const raw = input.value.trim();
+        if (field.normalized && field.normalized !== raw) {
+          return `Will save as ${field.normalized}. ${field.message}`;
+        }
+        return field.message;
+      }
+
+      function applyFieldValidation(input, field) {
+        if (!input || !field || field.state === 'empty') {
+          clearValidation(input);
+          return;
+        }
+
+        input.classList.remove('is-valid', 'is-invalid', 'is-warning');
+        const feedback = feedbackFor(input);
+        if (!feedback) return;
+
+        if (field.state === 'error') {
+          input.classList.add('is-invalid');
+          feedback.className = 'invalid-feedback d-block';
+        } else if (field.state === 'warning') {
+          input.classList.add('is-warning');
+          feedback.className = 'warning-feedback';
+        } else {
+          input.classList.add('is-valid');
+          feedback.className = 'valid-feedback d-block';
+        }
+        feedback.textContent = validationMessage(input, field);
+      }
+
+      async function runValidation(form) {
+        const { aliasField, destinationField, params } = validationParams(form);
+        const sequence = Number(form.dataset.validationSequence || '0') + 1;
+        form.dataset.validationSequence = String(sequence);
+        setPending(aliasField);
+        setPending(destinationField);
+
+        try {
+          const response = await fetch(`/api/aliases/validate?${params.toString()}`, { cache: 'no-store' });
+          if (!response.ok) throw new Error('validation failed');
+          const payload = await response.json();
+          if (form.dataset.validationSequence !== String(sequence)) return;
+          form.dataset.canSubmit = payload.can_submit ? 'true' : 'false';
+          form.dataset.normalizedAlias = payload.alias?.normalized || '';
+          form.dataset.normalizedDestination = payload.destination?.normalized || '';
+          applyFieldValidation(aliasField, payload.alias);
+          applyFieldValidation(destinationField, payload.destination);
+        } catch (err) {
+          form.dataset.canSubmit = 'true';
+          clearValidation(aliasField);
+          clearValidation(destinationField);
+        }
+      }
+
+      function scheduleValidation(form) {
+        window.clearTimeout(Number(form.dataset.validationTimer || '0'));
+        const timer = window.setTimeout(() => runValidation(form), 300);
+        form.dataset.validationTimer = String(timer);
+      }
+
+      function resetValidation(form) {
+        form.dataset.canSubmit = 'true';
+        form.dataset.normalizedAlias = '';
+        form.dataset.normalizedDestination = '';
+        clearValidation(form.querySelector('.alias-validation-input'));
+        clearValidation(form.querySelector('.destination-validation-input'));
+      }
+
+      function setEnabledState(button, enabled, alias) {
+        if (!button) return;
+        button.dataset.enabled = enabled ? '1' : '0';
+        button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        button.setAttribute('aria-label', `${enabled ? 'Disable' : 'Enable'} ${alias || 'golink'}`);
+        button.value = enabled ? '0' : '1';
+        button.title = enabled ? 'Enabled. Click to disable.' : 'Disabled. Click to enable.';
+        const label = button.querySelector('.state-toggle-label');
+        if (label) label.textContent = enabled ? 'Enabled' : 'Disabled';
+        const hiddenLabel = button.querySelector('.visually-hidden');
+        if (hiddenLabel) hiddenLabel.textContent = enabled ? 'Enabled' : 'Disabled';
+      }
+
+      function syncEnabledValue(enabled) {
+        enabledHidden.value = enabled ? '1' : '0';
+      }
+
+      function hideDeleteConfirmations(exceptForm) {
+        deleteForms.forEach((form) => {
+          if (form === exceptForm) return;
+          form.classList.remove('is-confirming');
+          form.closest('.alias-action-group')?.classList.remove('is-confirming');
+        });
       }
 
       editButtons.forEach((button) => {
@@ -300,33 +1295,86 @@
           oldAliasInput.value = button.dataset.alias || '';
           aliasInput.value = button.dataset.alias || '';
           destinationInput.value = button.dataset.destination || '';
-          enabledCheck.checked = button.dataset.enabled === '1';
-          syncEnabledValue();
+          syncEnabledValue(button.dataset.enabled === '1');
+          scheduleValidation(document.getElementById('edit-alias-form'));
         });
       });
 
-      enabledCheck.addEventListener('change', syncEnabledValue);
+      aliasToggleForms.forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const button = form.querySelector('.alias-toggle-button');
+          const row = form.closest('[data-row]');
+          const alias = form.querySelector('input[name="alias"]')?.value || row?.dataset.alias || '';
+          const nextEnabled = button?.value === '1';
+          if (!button || !row) return;
 
-      aliasToggleInputs.forEach((input) => {
-        input.addEventListener('change', () => {
-          const form = input.closest('form');
-          if (!form) return;
-          const enabledValue = form.querySelector('.enabled-value');
-          if (!enabledValue) return;
-          enabledValue.value = input.checked ? '1' : '0';
-          form.submit();
+          button.disabled = true;
+          row.classList.add('is-state-changing');
+
+          try {
+            const body = new URLSearchParams(new FormData(form));
+            body.set('enabled', nextEnabled ? '1' : '0');
+            const response = await fetch(form.action, {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body,
+            });
+            if (!response.ok) throw new Error('toggle failed');
+            const payload = await response.json();
+            const enabled = Boolean(payload.enabled);
+            row.dataset.enabled = enabled ? '1' : '0';
+            row.classList.toggle('table-secondary', !enabled);
+            row.querySelector('.edit-alias')?.setAttribute('data-enabled', enabled ? '1' : '0');
+            setEnabledState(button, enabled, alias);
+            loadAliasStatuses();
+          } catch (err) {
+            row.classList.add('is-invalid');
+            window.setTimeout(() => row.classList.remove('is-invalid'), 700);
+          } finally {
+            button.disabled = false;
+            window.setTimeout(() => row.classList.remove('is-state-changing'), 220);
+          }
         });
       });
 
       deleteForms.forEach((form) => {
         form.addEventListener('submit', (event) => {
-          const aliasField = form.querySelector('input[name="alias"]');
-          const alias = (aliasField && aliasField.value) || 'this golink';
-          const ok = window.confirm(`Delete golink "${alias}"?\n\nPress Enter to confirm.`);
-          if (!ok) {
-            event.preventDefault();
+          if (form.dataset.deleteConfirmed === 'true' || event.submitter?.matches('[data-delete-confirm]')) {
+            delete form.dataset.deleteConfirmed;
+            return;
           }
+          event.preventDefault();
+          hideDeleteConfirmations(form);
+          form.classList.add('is-confirming');
+          form.closest('.alias-action-group')?.classList.add('is-confirming');
+          form.querySelector('[data-delete-confirm]')?.focus();
         });
+
+        form.querySelector('[data-delete-confirm]')?.addEventListener('click', () => {
+          form.dataset.deleteConfirmed = 'true';
+        });
+
+        form.querySelector('[data-delete-cancel]')?.addEventListener('click', () => {
+          form.classList.remove('is-confirming');
+          form.closest('.alias-action-group')?.classList.remove('is-confirming');
+          form.querySelector('.delete-arm')?.focus();
+        });
+
+        form.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape') return;
+          form.classList.remove('is-confirming');
+          form.closest('.alias-action-group')?.classList.remove('is-confirming');
+          form.querySelector('.delete-arm')?.focus();
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        if (event.target.closest('.delete-confirm-form')) return;
+        hideDeleteConfirmations();
       });
 
       sortButtons.forEach((button) => {
@@ -342,8 +1390,54 @@
         });
       });
 
+      validationForms.forEach((form) => {
+        resetValidation(form);
+        const aliasField = form.querySelector('.alias-validation-input');
+        const destinationField = form.querySelector('.destination-validation-input');
+        [aliasField, destinationField].forEach((input) => {
+          if (!input) return;
+          input.addEventListener('input', () => scheduleValidation(form));
+          input.addEventListener('blur', () => runValidation(form));
+        });
+        form.addEventListener('submit', (event) => {
+          if (form.dataset.canSubmit === 'false') {
+            event.preventDefault();
+            runValidation(form);
+            return;
+          }
+          if (form.dataset.normalizedAlias && aliasField) {
+            aliasField.value = form.dataset.normalizedAlias;
+          }
+          if (form.dataset.normalizedDestination && destinationField) {
+            destinationField.value = form.dataset.normalizedDestination;
+          }
+        });
+      });
+
+      document.getElementById('addAliasModal').addEventListener('hidden.bs.modal', () => {
+        const form = document.getElementById('add-alias-form');
+        form.reset();
+        resetValidation(form);
+      });
+
       search.addEventListener('input', filterRows);
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+
+        const active = document.activeElement;
+        const isTyping =
+          active &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            active.tagName === 'SELECT' ||
+            active.isContentEditable);
+
+        if (isTyping) return;
+        event.preventDefault();
+        search.focus();
+      });
       updateSortButtonLabels();
+      loadAliasStatuses();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/js/bootstrap.bundle.min.js"></script>
   </body>

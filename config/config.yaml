@@ -1,31 +1,34 @@
 aliases:
-    - alias: r/{subreddit}
-      destination: https://www.reddit.com/r/{subreddit}
-    - alias: gh/{owner}/{name}
-      destination: https://github.com/{owner}/{name}
-    - alias: wiki/{topic}
-      destination: https://en.wikipedia.org/wiki/{topic}
-    - alias: yt/{}
-      destination: https://www.youtube.com/results?search_query={}
-    - alias: t/{user}
-      destination: https://x.com/{user}
-    - alias: gh
-      destination: https://github.com
-      enabled: true
-    - alias: g
-      destination: https://www.google.com
-    - alias: jay
-      destination: https://jayovalle.com
-    - alias: jpmc
-      destination: https://jpmorganchase.com
-    - alias: todo
-      destination: https://app.todoist.com/app/
-    - alias: yc
-      destination: https://news.ycombinator.com
-links:
-    g: https://www.google.com
-    gh: https://github.com
-    jay: https://jayovalle.com
-    jpmc: https://jpmorganchase.com
-    todo: https://app.todoist.com/app/
-    yc: https://news.ycombinator.com
+  - alias: "r/{:=selfhosted}"
+    destination: "https://www.reddit.com/r/{}"
+    enabled: true
+  - alias: "gh/{owner:=jovalle}/{name:=goku}"
+    destination: "https://github.com/{owner}/{name}"
+    enabled: true
+  - alias: "wiki/{:=zagreus}"
+    destination: "https://en.wikipedia.org/wiki/{}"
+    enabled: true
+  - alias: "yt/{:=goku}"
+    destination: "https://www.youtube.com/results?search_query={}"
+    enabled: true
+  - alias: "t/{:=BarackObama}"
+    destination: "https://twitter.com/@{}"
+    enabled: true
+  - alias: "gh"
+    destination: "https://github.com"
+    enabled: true
+  - alias: "g"
+    destination: "https://www.google.com"
+    enabled: true
+  - alias: "jay"
+    destination: "https://jayovalle.com"
+    enabled: true
+  - alias: "todo"
+    destination: "https://app.todoist.com/app/"
+    enabled: true
+  - alias: "yc"
+    destination: "https://news.ycombinator.com"
+    enabled: true
+  - alias: "gh/{owner:=jovalle}"
+    destination: "https://github.com/{owner}"
+    enabled: true

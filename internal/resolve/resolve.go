@@ -11,9 +11,3 @@ type Resolver interface {
 type AliasLister interface {
 	Aliases() []model.Alias
 }
-
-// LinkLister provides legacy read access to links and rules.
-type LinkLister interface {
-	Links() map[string]string
-	Rules() []model.Rule
-}

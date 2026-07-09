@@ -45,10 +45,10 @@ Without `GOKU_ADMIN_PASSWORD`, the admin UI is open (no logout button shown).
 
 ## Current Capabilities
 
-- Alias-based redirects with placeholder support (`{}` and named placeholders)
+- Golink redirects backed by aliases with placeholder support (`{}` and named placeholders)
 - Public and admin endpoints split by port (`:9000` and `:9001`)
 - Live health JSON (`/healthz`) on both ports and WebSocket stream (`/ws/health`) on public
-- Admin alias directory with:
+- Admin golink directory with:
   - search
   - sortable columns
   - add / edit / delete
@@ -57,7 +57,13 @@ Without `GOKU_ADMIN_PASSWORD`, the admin UI is open (no logout button shown).
   - clickable alias preview page with countdown redirect via public endpoint
 - API key + optional password authentication for admin/API operations
 - Config live-reload from disk
-- Dashboard/API alias changes are written back to `config/config.yaml` for persistence
+- Dashboard/API golink changes are written back to `config/config.yaml` for persistence
+
+## Terminology
+
+- **Golink**: a saved redirect entry.
+- **Alias**: the short path or pattern you type, such as `gh` or `r/{subreddit}`.
+- **Destination**: the target URL or URL template.
 - Prometheus metrics (`/metrics`) on admin
 
 ## Configuration
@@ -66,14 +72,14 @@ Edit `config/config.yaml`:
 
 ```yaml
 aliases:
-  - alias: gh
-    destination: https://github.com
-  - alias: gh/{owner}/{repo}
-    destination: https://github.com/{owner}/{repo}
-  - alias: r/{subreddit}
-    destination: https://www.reddit.com/r/{subreddit}
-  - alias: yt/{}
-    destination: https://www.youtube.com/results?search_query={}
+  - alias: 'gh'
+    destination: 'https://github.com'
+  - alias: 'gh/{owner}/{repo}'
+    destination: 'https://github.com/{owner}/{repo}'
+  - alias: 'r/{subreddit}'
+    destination: 'https://www.reddit.com/r/{subreddit}'
+  - alias: 'yt/{}'
+    destination: 'https://www.youtube.com/results?search_query={}'
 ```
 
 Placeholder rules:
@@ -95,40 +101,39 @@ Public (`:9000`):
 | Method | Path         | Description             |
 | ------ | ------------ | ----------------------- |
 | `GET`  | `/`          | Public status page      |
-| `GET`  | `/{path...}` | Alias redirect          |
-| `GET`  | `/preview`   | Alias redirect preview  |
+| `GET`  | `/{path...}` | Golink redirect         |
+| `GET`  | `/preview`   | Golink redirect preview |
 | `GET`  | `/healthz`   | Health JSON             |
 | `GET`  | `/ws/health` | Health WebSocket stream |
 
 Admin (`:9001`):
 
-| Method | Path                       | Description                                |
-| ------ | -------------------------- | ------------------------------------------ |
-| `GET`  | `/`                        | Admin panel                                |
-| `GET`  | `/login`                   | Login page (when password auth is enabled) |
-| `POST` | `/login`                   | Create admin session                       |
-| `POST` | `/logout`                  | Clear admin session                        |
-| `GET`  | `/metrics`                 | Prometheus metrics                         |
-| `GET`  | `/api/aliases`             | List aliases                               |
-| `POST` | `/api/aliases`             | Create/update alias                        |
-| `POST` | `/api/aliases/edit`        | Edit alias                                 |
-| `POST` | `/api/aliases/toggle`      | Enable/disable alias                       |
-| `POST` | `/api/aliases/delete`      | Delete alias                               |
-| `POST` | `/api/import`              | Batch import aliases                       |
-| `GET`  | `/api/broken-links`        | Read unresolved paths seen by server       |
+| Method | Path                  | Description                                |
+| ------ | --------------------- | ------------------------------------------ |
+| `GET`  | `/`                   | Admin panel                                |
+| `GET`  | `/login`              | Login page (when password auth is enabled) |
+| `POST` | `/login`              | Create admin session                       |
+| `POST` | `/logout`             | Clear admin session                        |
+| `GET`  | `/metrics`            | Prometheus metrics                         |
+| `GET`  | `/api/aliases`        | List aliases                               |
+| `POST` | `/api/aliases`        | Create/update alias                        |
+| `POST` | `/api/aliases/edit`   | Edit alias                                 |
+| `POST` | `/api/aliases/toggle` | Enable/disable alias                       |
+| `POST` | `/api/aliases/delete` | Delete alias                               |
+| `POST` | `/api/import`         | Batch import aliases                       |
 
 ## Environment Variables
 
-| Variable              | Default              | Description                                    |
-| --------------------- | -------------------- | ---------------------------------------------- |
-| `GOKU_API_PORT`       | `9000`               | Public endpoint port                           |
-| `GOKU_ADMIN_PORT`     | `9001`               | Admin endpoint port                            |
-| `GOKU_WEB_PORT`       | `9001`               | Backward-compatible admin port fallback        |
-| `GOKU_CONFIG`         | `config/config.yaml` | Config file path                               |
-| `GOKU_PUBLIC_BASE_URL`| _(empty)_            | Absolute public base URL used for admin preview links |
-| `GOKU_ADMIN_USERNAME` | `admin`              | Username for basic auth compatibility          |
-| `GOKU_ADMIN_PASSWORD` | _(empty)_            | Enables login page + session auth for admin UI |
-| `GOKU_API_KEY`        | _(generated/file)_   | Admin API bearer token                         |
+| Variable               | Default              | Description                                           |
+| ---------------------- | -------------------- | ----------------------------------------------------- |
+| `GOKU_API_PORT`        | `9000`               | Public endpoint port                                  |
+| `GOKU_ADMIN_PORT`      | `9001`               | Admin endpoint port                                   |
+| `GOKU_WEB_PORT`        | `9001`               | Admin port fallback when `GOKU_ADMIN_PORT` is unset   |
+| `GOKU_CONFIG`          | `config/config.yaml` | Config file path                                      |
+| `GOKU_PUBLIC_BASE_URL` | _(empty)_            | Absolute public base URL used for admin preview links |
+| `GOKU_ADMIN_USERNAME`  | `admin`              | Username for basic auth                               |
+| `GOKU_ADMIN_PASSWORD`  | _(empty)_            | Enables login page + session auth for admin UI        |
+| `GOKU_API_KEY`         | _(generated/file)_   | Admin API bearer token                                |
 
 ## Homelab/LAN Setup for `go/`
 

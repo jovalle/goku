@@ -137,7 +137,7 @@ func TestCheckAuth_NoAuthConfigured(t *testing.T) {
 
 func TestCheckAuth_BearerToken_Valid(t *testing.T) {
 	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
-	req := httptest.NewRequest("GET", "/api/links", nil)
+	req := httptest.NewRequest("GET", "/api/aliases", nil)
 	req.Header.Set("Authorization", "Bearer test-key-123")
 	w := httptest.NewRecorder()
 	if !srv.checkAuth(w, req) {
@@ -147,7 +147,7 @@ func TestCheckAuth_BearerToken_Valid(t *testing.T) {
 
 func TestCheckAuth_BearerToken_Invalid(t *testing.T) {
 	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
-	req := httptest.NewRequest("GET", "/api/links", nil)
+	req := httptest.NewRequest("GET", "/api/aliases", nil)
 	req.Header.Set("Authorization", "Bearer wrong-key")
 	w := httptest.NewRecorder()
 	if srv.checkAuth(w, req) {
@@ -252,7 +252,7 @@ func TestChain(t *testing.T) {
 
 func TestFullRequestLifecycle(t *testing.T) {
 	srv := newTestServer(t, model.Config{
-		Links: map[string]string{"gh": "https://github.com"},
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
 	})
 	req := httptest.NewRequest("GET", "/gh", nil)
 	w := httptest.NewRecorder()

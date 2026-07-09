@@ -7,7 +7,7 @@ import (
 
 // Sentinel errors for the resolve package.
 var (
-	// ErrNotFound means no link or rule matched the path.
+	// ErrNotFound means no enabled alias matched the path.
 	ErrNotFound = errors.New("not found")
 
 	// ErrBadPattern means a rule pattern is malformed.

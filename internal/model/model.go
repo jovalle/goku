@@ -1,27 +1,47 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v3"
+)
 
 // Config represents the full goku configuration loaded from YAML.
 type Config struct {
 	Aliases []Alias `yaml:"aliases,omitempty"`
-
-	// Legacy fields are still accepted on load and converted to aliases.
-	Links map[string]string `yaml:"links,omitempty"`
-	Rules []Rule            `yaml:"rules,omitempty"`
 }
 
 // Alias defines a single alias pattern and destination URL template.
 //
 // Examples:
-//   - alias: gh
-//     destination: https://github.com
-//   - alias: gh/{owner}/{repo}
-//     destination: https://github.com/{owner}/{repo}
+//   - alias: "gh"
+//     destination: "https://github.com"
+//   - alias: "gh/{owner}/{repo}"
+//     destination: "https://github.com/{owner}/{repo}"
 type Alias struct {
 	Alias       string `yaml:"alias" json:"alias"`
 	Destination string `yaml:"destination" json:"destination"`
 	Enabled     *bool  `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+}
+
+// MarshalYAML keeps URL-like values quoted for stable, parser-friendly config.
+func (a Alias) MarshalYAML() (any, error) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "alias"},
+			{Kind: yaml.ScalarNode, Value: a.Alias, Tag: "!!str", Style: yaml.DoubleQuotedStyle},
+			{Kind: yaml.ScalarNode, Value: "destination"},
+			{Kind: yaml.ScalarNode, Value: a.Destination, Tag: "!!str", Style: yaml.DoubleQuotedStyle},
+		},
+	}
+	if a.Enabled != nil {
+		node.Content = append(node.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "enabled"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: fmt.Sprintf("%t", *a.Enabled), Tag: "!!bool"},
+		)
+	}
+	return node, nil
 }
 
 // IsEnabled returns true when the alias is enabled.
@@ -40,17 +60,4 @@ func (a Alias) WithEnabled(enabled bool) Alias {
 func BoolPtr(v bool) *bool {
 	b := v
 	return &b
-}
-
-// Rule defines a dynamic redirect pattern.
-type Rule struct {
-	Name     string `yaml:"name"`
-	Type     string `yaml:"type"` // "prefix" or "template"
-	Pattern  string `yaml:"pattern"`
-	Redirect string `yaml:"redirect"`
-}
-
-// String implements fmt.Stringer for readable logging.
-func (r Rule) String() string {
-	return fmt.Sprintf("[%s] %s: %s -> %s", r.Type, r.Name, r.Pattern, r.Redirect)
 }

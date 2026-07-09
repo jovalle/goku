@@ -1,12 +1,90 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Goku Redirect</title>
+    <script>
+      (() => {
+        const storageKey = 'goku-theme';
+        let theme = 'light';
+        try {
+          theme =
+            localStorage.getItem(storageKey) ||
+            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } catch (err) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-bs-theme', theme);
+      })();
+    </script>
+    <link rel="icon" type="image/png" sizes="256x256" href="/static/favicon.png?v=2" />
+    <link rel="shortcut icon" href="/favicon.ico?v=2" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@latest/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      .theme-toggle {
+        bottom: 1rem;
+        height: 2.5rem;
+        position: fixed;
+        right: 1rem;
+        top: auto;
+        width: 2.5rem;
+        z-index: 1050;
+      }
+
+      .theme-toggle svg {
+        height: 1.1rem;
+        width: 1.1rem;
+      }
+
+      .theme-toggle .theme-icon-light {
+        display: none;
+      }
+
+      [data-bs-theme='dark'] .theme-toggle .theme-icon-dark {
+        display: none;
+      }
+
+      [data-bs-theme='dark'] .theme-toggle .theme-icon-light {
+        display: inline-block;
+      }
+
+      @media (max-width: 767.98px) {
+        .theme-toggle {
+          bottom: auto;
+          top: 1rem;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-light">
+  <body class="bg-body-tertiary">
+    <button
+      type="button"
+      class="btn btn-outline-secondary theme-toggle d-inline-flex align-items-center justify-content-center p-0"
+      data-theme-toggle
+      aria-label="Switch to dark mode"
+      title="Switch to dark mode"
+    >
+      <svg class="theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
+      </svg>
+      <svg class="theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+      </svg>
+      <span class="visually-hidden">Toggle dark mode</span>
+    </button>
     <main class="container py-5">
       <div class="row justify-content-center">
         <section class="col-12 col-lg-8">
@@ -21,7 +99,11 @@
 
                 <dt class="col-sm-3">Destination</dt>
                 <dd class="col-sm-9 text-break">
-                  <a id="destination-link" href="{{ .Destination }}" target="_blank" rel="noopener noreferrer"
+                  <a
+                    id="destination-link"
+                    href="{{ destinationHref .Alias .Destination }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     >{{ .Destination }}</a
                   >
                 </dd>
@@ -32,7 +114,7 @@
               </div>
 
               <div class="d-flex gap-2">
-                <a class="btn btn-primary" href="{{ .Destination }}">Go now</a>
+                <a class="btn btn-primary" href="{{ destinationHref .Alias .Destination }}">Go now</a>
                 <a class="btn btn-outline-secondary" href="/">Back to Goku</a>
               </div>
             </div>
@@ -42,6 +124,36 @@
     </main>
 
     <script>
+      (() => {
+        const storageKey = 'goku-theme';
+
+        function currentTheme() {
+          return document.documentElement.getAttribute('data-bs-theme') || 'light';
+        }
+
+        function paintThemeToggle(toggle) {
+          const isDark = currentTheme() === 'dark';
+          const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+          toggle.setAttribute('aria-label', label);
+          toggle.setAttribute('title', label);
+        }
+
+        function setTheme(theme) {
+          document.documentElement.setAttribute('data-bs-theme', theme);
+          try {
+            localStorage.setItem(storageKey, theme);
+          } catch (err) {}
+          document.querySelectorAll('[data-theme-toggle]').forEach(paintThemeToggle);
+        }
+
+        document.querySelectorAll('[data-theme-toggle]').forEach((toggle) => {
+          paintThemeToggle(toggle);
+          toggle.addEventListener('click', () => {
+            setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+          });
+        });
+      })();
+
       const destination = document.getElementById('destination-link').href;
       const countdownEl = document.getElementById('countdown');
       let remaining = Number(countdownEl.textContent || '5');

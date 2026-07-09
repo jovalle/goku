@@ -21,7 +21,7 @@ func TestConfigReload_Integration(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 
-	initial := model.Config{Links: map[string]string{"gh": "https://github.com"}}
+	initial := model.Config{Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}}}
 	if err := config.Save(cfgPath, initial); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,10 @@ func TestConfigReload_Integration(t *testing.T) {
 
 	// Update config
 	updated := model.Config{
-		Links: map[string]string{"gh": "https://github.com", "g": "https://google.com"},
+		Aliases: []model.Alias{
+			{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)},
+			{Alias: "g", Destination: "https://google.com", Enabled: model.BoolPtr(true)},
+		},
 	}
 	if err := config.Save(cfgPath, updated); err != nil {
 		t.Fatal(err)
@@ -78,7 +81,7 @@ func TestE2E_AddLinkThenRedirect(t *testing.T) {
 
 	// Add link
 	form := url.Values{"name": {"docs"}, "url": {"https://docs.example.com"}}
-	addReq := httptest.NewRequest("POST", "/api/links", strings.NewReader(form.Encode()))
+	addReq := httptest.NewRequest("POST", "/api/aliases", strings.NewReader(form.Encode()))
 	addReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	addW := httptest.NewRecorder()
 	srv.ServeHTTP(addW, addReq)
@@ -100,11 +103,11 @@ func TestE2E_AddLinkThenRedirect(t *testing.T) {
 
 func TestE2E_AddThenDeleteLink(t *testing.T) {
 	srv := newTestServer(t, model.Config{
-		Links: map[string]string{"gh": "https://github.com"},
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
 	})
 
 	// Delete
-	delReq := httptest.NewRequest("POST", "/api/links/gh/delete", nil)
+	delReq := httptest.NewRequest("POST", "/api/aliases/gh/delete", nil)
 	delW := httptest.NewRecorder()
 	srv.ServeHTTP(delW, delReq)
 	if delW.Code != http.StatusSeeOther {
@@ -117,48 +120,5 @@ func TestE2E_AddThenDeleteLink(t *testing.T) {
 	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
-func TestE2E_AddThenDeleteRule(t *testing.T) {
-	srv := newTestServer(t, model.Config{})
-
-	// Add rule
-	form := url.Values{
-		"name":     {"wiki"},
-		"type":     {"prefix"},
-		"pattern":  {"w"},
-		"redirect": {"https://en.wikipedia.org/wiki"},
-	}
-	addReq := httptest.NewRequest("POST", "/api/rules", strings.NewReader(form.Encode()))
-	addReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	addW := httptest.NewRecorder()
-	srv.ServeHTTP(addW, addReq)
-	if addW.Code != http.StatusSeeOther {
-		t.Fatalf("add rule status = %d, want 303", addW.Code)
-	}
-
-	// Verify redirect works
-	req := httptest.NewRequest("GET", "/w/Go", nil)
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusFound {
-		t.Fatalf("prefix redirect: status = %d, want 302", w.Code)
-	}
-
-	// Delete rule
-	delReq := httptest.NewRequest("POST", "/api/rules/wiki/delete", nil)
-	delW := httptest.NewRecorder()
-	srv.ServeHTTP(delW, delReq)
-	if delW.Code != http.StatusSeeOther {
-		t.Fatalf("delete rule status = %d, want 303", delW.Code)
-	}
-
-	// 404
-	req2 := httptest.NewRequest("GET", "/w/Go", nil)
-	w2 := httptest.NewRecorder()
-	srv.ServeHTTP(w2, req2)
-	if w2.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w2.Code)
 	}
 }

@@ -13,8 +13,7 @@ func TestRegister(t *testing.T) {
 		RequestDuration,
 		ResolveErrors,
 		ConfigReloads,
-		LinksTotal,
-		RulesTotal,
+		AliasesTotal,
 	}
 	for _, c := range collectors {
 		if err := reg.Register(c); err != nil {
@@ -30,6 +29,5 @@ func TestMetrics_Increment(t *testing.T) {
 	RequestDuration.WithLabelValues("GET", "200").Observe(0.01)
 	ResolveErrors.Inc()
 	ConfigReloads.Inc()
-	LinksTotal.Set(5)
-	RulesTotal.Set(3)
+	AliasesTotal.Set(5)
 }

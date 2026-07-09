@@ -39,10 +39,6 @@ var (
 		Name: "goku_aliases_configured",
 		Help: "Current number of configured aliases.",
 	})
-
-	// Backward-compatible aliases; all now mirror aliases count.
-	LinksTotal = AliasesTotal
-	RulesTotal = AliasesTotal
 )
 
 // Register registers all goku metrics with Prometheus.
