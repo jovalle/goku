@@ -17,5 +17,5 @@ COPY --from=build /goku /usr/local/bin/goku
 COPY config/config.yaml /etc/goku/config.yaml
 
 ENV GOKU_CONFIG=/etc/goku/config.yaml
-EXPOSE 9001
+EXPOSE 9000 9001
 ENTRYPOINT ["goku"]

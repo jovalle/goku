@@ -304,6 +304,40 @@ func TestResolve_Priority_ExactOverPrefix(t *testing.T) {
 	}
 }
 
+func TestResolve_Priority_ExactOverFallbackRegardlessOfOrder(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{
+			{Alias: "{query}", Destination: "https://{query}.example.com"},
+			{Alias: "websecure-sonarr", Destination: "https://sonarr.example.invalid"},
+		},
+	})
+
+	url, err := s.Resolve("websecure-sonarr")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != "https://sonarr.example.invalid" {
+		t.Fatalf("exact alias should win over fallback, got %q", url)
+	}
+}
+
+func TestResolve_Priority_SpecificTemplateOverFallback(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{
+			{Alias: "{query...}", Destination: "https://{query...}.example.com"},
+			{Alias: "r/{rest...}", Destination: "https://www.reddit.com/r/{rest...}"},
+		},
+	})
+
+	url, err := s.Resolve("r/golang")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if url != "https://www.reddit.com/r/golang" {
+		t.Fatalf("specific template should win over fallback, got %q", url)
+	}
+}
+
 func TestUpsertAlias_PreservesEnabledState(t *testing.T) {
 	s := New(model.Config{})
 

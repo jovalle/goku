@@ -288,7 +288,7 @@ func TestAdminLandingPage_DestinationLinksStripPlaceholders(t *testing.T) {
 	srv := newAdminTestServer(t, model.Config{
 		Aliases: []model.Alias{
 			{Alias: "repo/{test}", Destination: "https://github.com/jovalle/{test}"},
-			{Alias: "{query}", Destination: "https://{query}.techn.is"},
+			{Alias: "{query}", Destination: "https://{query}.example.com"},
 		},
 	})
 
@@ -302,8 +302,8 @@ func TestAdminLandingPage_DestinationLinksStripPlaceholders(t *testing.T) {
 	body := w.Body.String()
 	for _, unexpected := range []string{
 		`href="https://github.com/jovalle/{test}"`,
-		`href="https://{query}.techn.is"`,
-		`href="https://.techn.is"`,
+		`href="https://{query}.example.com"`,
+		`href="https://.example.com"`,
 	} {
 		if strings.Contains(body, unexpected) {
 			t.Fatalf("admin destination href should not contain %q, body = %q", unexpected, body)
@@ -311,9 +311,9 @@ func TestAdminLandingPage_DestinationLinksStripPlaceholders(t *testing.T) {
 	}
 	for _, expected := range []string{
 		`href="https://github.com/jovalle/"`,
-		`href="https://techn.is"`,
+		`href="https://example.com"`,
 		`https://github.com/jovalle/{test}`,
-		`https://{query}.techn.is`,
+		`https://{query}.example.com`,
 	} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("expected admin page to contain %q, body = %q", expected, body)
@@ -947,8 +947,8 @@ func TestDestinationHref_StripsPlaceholders(t *testing.T) {
 		{
 			name:        "host placeholder",
 			alias:       "{query}",
-			destination: "https://{query}.techn.is",
-			want:        "https://techn.is",
+			destination: "https://{query}.example.com",
+			want:        "https://example.com",
 		},
 		{
 			name:        "bare destination",
@@ -1271,7 +1271,7 @@ func TestHandleImportPreview_YAMLSampleShape(t *testing.T) {
 - alias: gh
   destination: https://github.com
 - alias: '{query}'
-  destination: https://{query}.techn.is
+  destination: https://{query}.example.com
   enabled: true
 `
 	bodyBytes, err := json.Marshal(importPreviewRequest{Format: "yaml", Content: content})
@@ -1358,7 +1358,7 @@ func TestHandleImportPreview_JSONSampleShape(t *testing.T) {
   "aliases": [
     {"alias": "npm", "destination": "https://www.npmjs.com"},
     {"alias": "r/{rest...}", "destination": "https://www.reddit.com/r/{rest...}"},
-    {"alias": "{query}", "destination": "https://{query}.techn.is", "enabled": true}
+    {"alias": "{query}", "destination": "https://{query}.example.com", "enabled": true}
   ]
 }`
 	bodyBytes, err := json.Marshal(importPreviewRequest{Format: "json", Content: content})
@@ -1380,7 +1380,7 @@ func TestHandleImportPreview_JSONSampleShape(t *testing.T) {
 	if resp.Format != "json" || resp.ValidCount != 3 || resp.NewCount != 3 {
 		t.Fatalf("preview response = %#v", resp)
 	}
-	if resp.Items[2].Alias != "{query}" || resp.Items[2].Destination != "https://{query}.techn.is" {
+	if resp.Items[2].Alias != "{query}" || resp.Items[2].Destination != "https://{query}.example.com" {
 		t.Fatalf("placeholder item = %#v", resp.Items[2])
 	}
 }

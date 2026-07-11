@@ -158,6 +158,7 @@ If you want links like `http://go/gh` on your LAN, set up local name resolution 
 
 - If you run goku directly on the host, send HTTP traffic for `go` to `:9000`.
 - If you use a reverse proxy, point that hostname to `http://127.0.0.1:9000`.
+- If you use Traefik with Docker/service autodiscovery, make the golink redirect router target the public port (`9000`). The admin/API port (`9001`) shows the directory and CRUD API, but it intentionally returns 404 for alias paths.
 
 Minimal examples:
 

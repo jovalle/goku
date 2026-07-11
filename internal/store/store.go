@@ -38,13 +38,25 @@ func (s *AliasStore) Resolve(path string) (string, error) {
 		}
 	}
 
-	for _, a := range s.config.Aliases {
+	best := resolveCandidate{}
+	for index, a := range s.config.Aliases {
 		if !a.IsEnabled() {
 			continue
 		}
 		if url, ok := matchAlias(path, a.Alias, a.Destination); ok {
-			return url, nil
+			candidate := resolveCandidate{
+				url:   url,
+				score: aliasSpecificity(a.Alias),
+				index: index,
+				ok:    true,
+			}
+			if !best.ok || candidate.moreSpecificThan(best) {
+				best = candidate
+			}
 		}
+	}
+	if best.ok {
+		return best.url, nil
 	}
 
 	return "", &resolve.ResolveError{
@@ -52,6 +64,58 @@ func (s *AliasStore) Resolve(path string) (string, error) {
 		Reason: "no matching alias",
 		Err:    resolve.ErrNotFound,
 	}
+}
+
+type resolveCandidate struct {
+	url   string
+	score aliasScore
+	index int
+	ok    bool
+}
+
+func (c resolveCandidate) moreSpecificThan(other resolveCandidate) bool {
+	if c.score.exact != other.score.exact {
+		return c.score.exact
+	}
+	if c.score.staticSegments != other.score.staticSegments {
+		return c.score.staticSegments > other.score.staticSegments
+	}
+	if c.score.greedyPlaceholders != other.score.greedyPlaceholders {
+		return c.score.greedyPlaceholders < other.score.greedyPlaceholders
+	}
+	if c.score.placeholderSegments != other.score.placeholderSegments {
+		return c.score.placeholderSegments < other.score.placeholderSegments
+	}
+	if c.score.totalSegments != other.score.totalSegments {
+		return c.score.totalSegments > other.score.totalSegments
+	}
+	return c.index < other.index
+}
+
+type aliasScore struct {
+	exact               bool
+	staticSegments      int
+	placeholderSegments int
+	greedyPlaceholders  int
+	totalSegments       int
+}
+
+func aliasSpecificity(aliasPattern string) aliasScore {
+	parts := splitPath(aliasPattern)
+	score := aliasScore{totalSegments: len(parts), exact: true}
+	for _, part := range parts {
+		_, placeholder, greedy := parsePlaceholder(part)
+		if !placeholder {
+			score.staticSegments++
+			continue
+		}
+		score.exact = false
+		score.placeholderSegments++
+		if greedy {
+			score.greedyPlaceholders++
+		}
+	}
+	return score
 }
 
 // Aliases returns a copy of all configured aliases.
