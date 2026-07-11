@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/jovalle/goku/compare/v1.4.0...v1.5.0) (2026-07-11)
+
+
+### Features
+
+* enhance alias resolution logic and add tests for priority handling ([e35c802](https://github.com/jovalle/goku/commit/e35c80206b70dcbd63f14ab5ae23daf04adfc556))
+
 ## [1.4.0](https://github.com/jovalle/goku/compare/v1.3.0...v1.4.0) (2026-07-09)
 
 
