@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/jovalle/goku/compare/v1.5.0...v1.6.0) (2026-07-14)
+
+
+### Features
+
+* implement ranked fuzzy search for alias filtering in admin UI ([810cdc7](https://github.com/jovalle/goku/commit/810cdc7943dcee5c58702506f0dec79951460961))
+
 ## [1.5.0](https://github.com/jovalle/goku/compare/v1.4.0...v1.5.0) (2026-07-11)
 
 
