@@ -266,6 +266,33 @@ func TestAdminLandingPage(t *testing.T) {
 	}
 }
 
+func TestAdminLandingPage_UsesFieldAwareRankedFuzzySearch(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{
+		Aliases: []model.Alias{{Alias: "garage-ui", Destination: "https://garage.example.com"}},
+	})
+	req := httptest.NewRequest("GET", "/", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+	body := w.Body.String()
+	for _, expected := range []string{
+		"fuzzyScore(q, row.dataset.alias)",
+		"fuzzyScore(q, row.dataset.destination)",
+		"rankedRows.sort",
+		"isCompact",
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected ranked field-aware fuzzy search containing %q", expected)
+		}
+	}
+	if strings.Contains(body, "row.dataset.alias + ' ' + row.dataset.destination") {
+		t.Fatal("search must not combine fields and match a query across unrelated alias and destination text")
+	}
+}
+
 func TestAdminLandingPage_UsesConfiguredPublicPreviewBaseURL(t *testing.T) {
 	srv := newAdminTestServer(t, model.Config{
 		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com"}},

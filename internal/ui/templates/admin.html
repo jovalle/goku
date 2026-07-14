@@ -1032,24 +1032,74 @@
       const sortState = { key: 'alias', direction: 'asc' };
       let statusPollTimer = 0;
 
-      function fuzzy(q, s) {
-        q = q.toLowerCase().trim();
-        s = s.toLowerCase();
-        if (!q) return true;
-        if (s.includes(q)) return true;
-        let qi = 0;
-        for (let i = 0; i < s.length && qi < q.length; i++) {
-          if (s[i] === q[qi]) qi++;
+      function isWordBoundary(value, index) {
+        if (index === 0) return true;
+        const previous = value[index - 1];
+        const current = value[index];
+        return /[^a-z0-9]/i.test(previous) || (/[a-z]/.test(previous) && /[A-Z]/.test(current));
+      }
+
+      function fuzzyScore(query, value) {
+        const q = query.toLowerCase().trim();
+        const text = value.toLowerCase();
+        if (!q) return 0;
+
+        const exactIndex = text.indexOf(q);
+        if (exactIndex !== -1) {
+          return 10000 - exactIndex * 10 - Math.min(text.length - q.length, 100);
         }
-        return qi === q.length;
+
+        let best = -1;
+        for (let start = text.indexOf(q[0]); start !== -1; start = text.indexOf(q[0], start + 1)) {
+          const positions = [start];
+          let position = start;
+          for (let qi = 1; qi < q.length; qi++) {
+            position = text.indexOf(q[qi], position + 1);
+            if (position === -1) break;
+            positions.push(position);
+          }
+          if (positions.length !== q.length) continue;
+
+          let gaps = 0;
+          let largestGap = 0;
+          let adjacent = 0;
+          let boundaries = 0;
+          positions.forEach((matchPosition, index) => {
+            if (isWordBoundary(value, matchPosition)) boundaries++;
+            if (index === 0) return;
+            const gap = matchPosition - positions[index - 1] - 1;
+            gaps += gap;
+            largestGap = Math.max(largestGap, gap);
+            if (gap === 0) adjacent++;
+          });
+
+          const span = positions[positions.length - 1] - positions[0] + 1;
+          const isAcronym = boundaries === q.length;
+          const isCompact = largestGap <= 2 && span <= Math.max(q.length * 2, q.length + 2);
+          if (!isAcronym && !isCompact) continue;
+
+          const score = 1000 + boundaries * 120 + adjacent * 60 - gaps * 15 - span - start;
+          best = Math.max(best, score);
+        }
+        return best;
       }
 
       function filterRows() {
-        const q = search.value;
-        rows.forEach((row) => {
-          const text = row.dataset.alias + ' ' + row.dataset.destination;
-          row.style.display = fuzzy(q, text) ? '' : 'none';
+        const q = search.value.trim();
+        const rankedRows = rows.map((row) => {
+          const aliasScore = fuzzyScore(q, row.dataset.alias);
+          const destinationScore = fuzzyScore(q, row.dataset.destination);
+          const score = Math.max(aliasScore < 0 ? -1 : aliasScore + 250, destinationScore);
+          row.style.display = !q || score >= 0 ? '' : 'none';
+          return { row, score };
         });
+
+        if (q) {
+          rankedRows.sort((a, b) => b.score - a.score || compareRows(a.row, b.row));
+          rankedRows.forEach(({ row }) => aliasBody.appendChild(row));
+        } else {
+          rows.forEach((row) => aliasBody.appendChild(row));
+        }
       }
 
       function sortValue(row, key) {
@@ -1071,20 +1121,22 @@
         });
       }
 
+      function compareRows(a, b) {
+        const av = sortValue(a, sortState.key);
+        const bv = sortValue(b, sortState.key);
+        let cmp = 0;
+
+        if (typeof av === 'number' && typeof bv === 'number') {
+          cmp = av - bv;
+        } else {
+          cmp = String(av).localeCompare(String(bv));
+        }
+
+        return sortState.direction === 'asc' ? cmp : -cmp;
+      }
+
       function sortRows() {
-        rows.sort((a, b) => {
-          const av = sortValue(a, sortState.key);
-          const bv = sortValue(b, sortState.key);
-          let cmp = 0;
-
-          if (typeof av === 'number' && typeof bv === 'number') {
-            cmp = av - bv;
-          } else {
-            cmp = String(av).localeCompare(String(bv));
-          }
-
-          return sortState.direction === 'asc' ? cmp : -cmp;
-        });
+        rows.sort(compareRows);
 
         rows.forEach((row) => aliasBody.appendChild(row));
         updateSortButtonLabels();
