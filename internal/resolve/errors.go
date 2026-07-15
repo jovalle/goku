@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// Sentinel errors for the resolve package.
 var (
 	// ErrNotFound means no enabled alias matched the path.
 	ErrNotFound = errors.New("not found")
@@ -14,11 +13,11 @@ var (
 	ErrBadPattern = errors.New("invalid rule pattern")
 )
 
-// ResolveError provides detailed context about a resolution failure.
+// ResolveError reports why a path could not be resolved.
 type ResolveError struct {
-	Path   string // the requested path
-	Reason string // human-readable explanation
-	Err    error  // underlying error (may be nil)
+	Path   string
+	Reason string
+	Err    error
 }
 
 func (e *ResolveError) Error() string {
@@ -28,7 +27,6 @@ func (e *ResolveError) Error() string {
 	return fmt.Sprintf("resolve %q: %s", e.Path, e.Reason)
 }
 
-// Unwrap supports errors.Is and errors.As.
 func (e *ResolveError) Unwrap() error {
 	return e.Err
 }

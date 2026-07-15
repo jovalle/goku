@@ -111,7 +111,6 @@ func TestConfigReload_Integration(t *testing.T) {
 func TestE2E_AddLinkThenRedirect(t *testing.T) {
 	srv := newTestServer(t, model.Config{})
 
-	// 404 before add
 	req := httptest.NewRequest("GET", "/docs", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
@@ -119,7 +118,6 @@ func TestE2E_AddLinkThenRedirect(t *testing.T) {
 		t.Fatalf("expected 404 before add, got %d", w.Code)
 	}
 
-	// Add link
 	form := url.Values{"name": {"docs"}, "url": {"https://docs.example.com"}}
 	addReq := httptest.NewRequest("POST", "/api/aliases", strings.NewReader(form.Encode()))
 	addReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -129,7 +127,6 @@ func TestE2E_AddLinkThenRedirect(t *testing.T) {
 		t.Fatalf("add status = %d, want 303", addW.Code)
 	}
 
-	// Redirect works now
 	req2 := httptest.NewRequest("GET", "/docs", nil)
 	w2 := httptest.NewRecorder()
 	srv.ServeHTTP(w2, req2)
@@ -146,7 +143,6 @@ func TestE2E_AddThenDeleteLink(t *testing.T) {
 		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
 	})
 
-	// Delete
 	delReq := httptest.NewRequest("POST", "/api/aliases/gh/delete", nil)
 	delW := httptest.NewRecorder()
 	srv.ServeHTTP(delW, delReq)
@@ -154,7 +150,6 @@ func TestE2E_AddThenDeleteLink(t *testing.T) {
 		t.Fatalf("delete status = %d, want 303", delW.Code)
 	}
 
-	// 404
 	req := httptest.NewRequest("GET", "/gh", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)

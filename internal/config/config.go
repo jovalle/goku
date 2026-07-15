@@ -12,8 +12,7 @@ import (
 	"github.com/jovalle/goku/internal/model"
 )
 
-// Load reads and parses a YAML config file.
-// If the file does not exist, it returns a default empty config.
+// Load reads a YAML config file, or returns an empty config if it does not exist.
 func Load(path string) (model.Config, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -38,7 +37,7 @@ func Load(path string) (model.Config, error) {
 	return cfg, nil
 }
 
-// Save writes the config back to YAML atomically (write to tmp, then rename).
+// Save writes the config to YAML atomically.
 func Save(path string, cfg model.Config) error {
 	if cfg.Aliases == nil {
 		cfg.Aliases = []model.Alias{}

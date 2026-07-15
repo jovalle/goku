@@ -72,7 +72,6 @@ func newWithMode(s *store.AliasStore, logger *slog.Logger, configPath string, au
 	}
 	srv.routes()
 
-	// Build the middleware chain once (outermost runs first)
 	srv.handler = chain(srv.mux,
 		RecoveryMiddleware(logger),
 		LoggingMiddleware(logger),
@@ -89,7 +88,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
-	// Shared endpoints.
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
 	s.mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
 	s.mux.HandleFunc("GET /static/favicon.png", s.handleFavicon)

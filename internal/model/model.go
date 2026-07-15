@@ -6,7 +6,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config represents the full goku configuration loaded from YAML.
 type Config struct {
 	Aliases []Alias `yaml:"aliases,omitempty"`
 }
@@ -56,7 +55,6 @@ func (a Alias) WithEnabled(enabled bool) Alias {
 	return a
 }
 
-// BoolPtr returns a pointer to the provided bool value.
 func BoolPtr(v bool) *bool {
 	b := v
 	return &b

@@ -11,14 +11,11 @@ import (
 	"github.com/jovalle/goku/internal/model"
 )
 
-// Updater is called when the config file changes.
 type Updater interface {
 	Update(cfg model.Config)
 }
 
-// Watch starts watching the config file for changes.
-// It reloads the config and calls updater.Update() on change.
-// It blocks until ctx is cancelled.
+// Watch reloads the config when it changes and blocks until ctx is cancelled.
 func Watch(ctx context.Context, path string, updater Updater, logger *slog.Logger) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -26,7 +23,7 @@ func Watch(ctx context.Context, path string, updater Updater, logger *slog.Logge
 	}
 	defer watcher.Close()
 
-	// Watch the directory to catch editor rename-based saves (Vim, VS Code)
+	// Watching the directory also catches rename-based saves.
 	dir := filepath.Dir(path)
 	if err := watcher.Add(dir); err != nil {
 		return err

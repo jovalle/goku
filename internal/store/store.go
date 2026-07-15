@@ -300,7 +300,7 @@ func (s *AliasStore) Config() model.Config {
 	return s.configCopy()
 }
 
-// Update atomically replaces the config (used by the file watcher).
+// Update replaces the config atomically when the file watcher reloads it.
 func (s *AliasStore) Update(cfg model.Config) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -10,8 +10,6 @@ import (
 	"github.com/jovalle/goku/internal/model"
 )
 
-// ── LoggingMiddleware ───────────────────────────────────────
-
 func TestLoggingMiddleware(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler := LoggingMiddleware(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,9 +23,6 @@ func TestLoggingMiddleware(t *testing.T) {
 		t.Errorf("status = %d, want 200", w.Code)
 	}
 }
-
-// ── RecoveryMiddleware ──────────────────────────────────────
-
 func TestRecoveryMiddleware_NoPanic(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler := RecoveryMiddleware(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +50,6 @@ func TestRecoveryMiddleware_CatchesPanic(t *testing.T) {
 		t.Errorf("status = %d, want 500", w.Code)
 	}
 }
-
-// ── RequestIDMiddleware ──────────────────────────────────────
-
 func TestRequestIDMiddleware_GeneratesID(t *testing.T) {
 	handler := RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -88,9 +80,6 @@ func TestRequestIDMiddleware_PassthroughExisting(t *testing.T) {
 		t.Errorf("X-Request-ID = %q, want %q", got, "my-custom-id")
 	}
 }
-
-// ── MetricsMiddleware ────────────────────────────────────────
-
 func TestMetricsMiddleware(t *testing.T) {
 	handler := MetricsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -103,9 +92,6 @@ func TestMetricsMiddleware(t *testing.T) {
 		t.Errorf("status = %d, want 200", w.Code)
 	}
 }
-
-// ── statusRecorder ───────────────────────────────────────────
-
 func TestStatusRecorder_DefaultStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	rec := &statusRecorder{ResponseWriter: w, status: 200}
@@ -123,9 +109,6 @@ func TestStatusRecorder_ExplicitStatus(t *testing.T) {
 		t.Errorf("status = %d, want 404", rec.status)
 	}
 }
-
-// ── checkAuth ────────────────────────────────────────────────
-
 func TestCheckAuth_NoAuthConfigured(t *testing.T) {
 	srv := newTestServer(t, model.Config{})
 	req := httptest.NewRequest("GET", "/", nil)
@@ -211,9 +194,6 @@ func TestCheckAuth_APIKeyAloneDoesNotEnableAuth(t *testing.T) {
 		t.Error("did not expect WWW-Authenticate header when auth is disabled")
 	}
 }
-
-// ── Chain ────────────────────────────────────────────────────
-
 func TestChain(t *testing.T) {
 	var order []string
 	mw1 := func(next http.Handler) http.Handler {
@@ -247,9 +227,6 @@ func TestChain(t *testing.T) {
 		}
 	}
 }
-
-// ── Full request lifecycle ───────────────────────────────────
-
 func TestFullRequestLifecycle(t *testing.T) {
 	srv := newTestServer(t, model.Config{
 		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
