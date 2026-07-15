@@ -1,8 +1,9 @@
+<!-- markdownlint-disable MD033 MD041 -->
 <div align="center">
   <img src=".github/assets/logo.png" alt="Goku" width="200" />
   <h1>goku</h1>
   <p><em>Enlightenment (悟 → `go`) through the (homelab) void (空 → `ku`)</em></p>
-  <p>A golinks solution written in Go.</p>
+  <p>Self-hosted golinks written in Go.</p>
 
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -13,58 +14,57 @@
 [![Coverage](https://img.shields.io/badge/Coverage-go%20test%20%28CI%29-31c653)](https://github.com/jovalle/goku/actions/workflows/ci.yml)
 
 </div>
+<!-- markdownlint-enable MD033 MD041 -->
 
 ---
+
+## What is a golink?
+
+A golink is a short, memorable keyword/URL that redirects to a longer destination. Think a URL shortener but without the random short code (e.g. `2bjs09`). In goku, each golink pairs an alias such as `gh` with a destination such as `https://github.com`. Once your network resolves the `go` hostname to goku (see [Set up golinks on a LAN](#set-up-golinks-on-a-lan)), opening `http://go/gh` takes you to that destination.
+
+Golinks are increasingly commonplace in corporate environments (so much so one might develop muscle memory 😅) and goku brings that same experience to the homelab.
 
 ## Quick Start
 
 1. Run goku:
 
-```bash
-just run
-```
+   ```bash
+   just run
+   ```
 
-or:
+   or:
 
-```bash
-go run ./cmd/goku
-```
+   ```bash
+   go run ./cmd/goku
+   ```
 
-1. Open the apps:
+2. Open the apps:
+   - Public endpoint: `http://localhost:9000`
+   - Admin panel: `http://localhost:9001`
 
-- Public endpoint: `http://localhost:9000`
-- Admin panel: `http://localhost:9001`
-
-1. (Optional) enable admin login:
+3. To require an admin login, set a password:
 
 ```bash
 GOKU_ADMIN_PASSWORD=my-secret just run
 ```
 
-Without `GOKU_ADMIN_PASSWORD`, the admin UI is open (no logout button shown).
+Without `GOKU_ADMIN_PASSWORD`, the admin UI is open and does not show a logout button.
 
-## Current Capabilities
+## What it does
 
-- Golink redirects backed by aliases with placeholder support (`{}` and named placeholders)
-- Public and admin endpoints split by port (`:9000` and `:9001`)
-- Live health JSON (`/healthz`) on both ports and WebSocket stream (`/ws/health`) on public
-- Admin golink directory with:
-  - search
-  - sortable columns
-  - add / edit / delete
-  - enable / disable toggle
-  - clickable destination links
-  - clickable alias preview page with countdown redirect via public endpoint
-- API key + optional password authentication for admin/API operations
-- Config live-reload from disk
-- Dashboard/API golink changes are written back to `config/config.yaml` for persistence
+- Resolves exact aliases and placeholder patterns, including `{}` and named placeholders.
+- Runs public redirects on `:9000` and the admin UI and API on `:9001`.
+- Reports health as JSON on both ports and streams updates from `/ws/health` on the public port.
+- Lets you search, sort, add, edit, delete, enable, disable, and preview golinks from the admin UI.
+- Accepts session, basic, and bearer authentication for admin and API requests.
+- Reloads config changes from disk and writes admin and API changes back to `config/config.yaml`.
+- Exposes Prometheus metrics at `/metrics` on the admin port.
 
 ## Terminology
 
-- **Golink**: a saved redirect entry.
-- **Alias**: the short path or pattern you type, such as `gh` or `r/{subreddit}`.
-- **Destination**: the target URL or URL template.
-- Prometheus metrics (`/metrics`) on admin
+- A **golink** is a saved redirect.
+- An **alias** is the short path or pattern you type, such as `gh` or `r/{subreddit}`.
+- A **destination** is the target URL or URL template.
 
 ## Configuration
 
@@ -80,23 +80,24 @@ aliases:
     destination: 'https://www.reddit.com/r/{subreddit}'
   - alias: 'yt/{}'
     destination: 'https://www.youtube.com/results?search_query={}'
+  - alias: 't/{:=BarackObama}'
+    destination: 'https://twitter.com/@{}'
 ```
 
-Placeholder rules:
+### Placeholder rules
 
 - Single placeholder aliases can use `{}`.
 - Multiple placeholders must be uniquely named.
 - Destination placeholders must be defined by the alias pattern.
+- Add a default with `{name:=value}` or `{:=value}`. For the `t` alias above, `http://go/t` uses `BarackObama`, while `http://go/t/jovalle` uses `jovalle` instead.
 
-`go/` prefix note:
+### Using a `go/` hostname
 
-- Keep using `go/` style links if that is your workflow (for example `http://go/gh` or `http://go/r/golang`).
-- This assumes your DNS (or local host mapping) resolves `go` (or a hostname like `go.home.arpa`) to your goku endpoint.
-- Without DNS/host routing, use the explicit server URL instead (for example `http://localhost:9000/gh`).
+Links such as `http://go/gh` work when DNS or a local hosts file resolves `go` to the goku server. A local domain such as `go.home.arpa` works too. Without local name resolution, use the server URL, for example `http://localhost:9000/gh`.
 
 ## Endpoints
 
-Public (`:9000`):
+### Public (`:9000`)
 
 | Method | Path         | Description             |
 | ------ | ------------ | ----------------------- |
@@ -106,7 +107,7 @@ Public (`:9000`):
 | `GET`  | `/healthz`   | Health JSON             |
 | `GET`  | `/ws/health` | Health WebSocket stream |
 
-Admin (`:9001`):
+### Admin (`:9001`)
 
 | Method | Path                  | Description                                |
 | ------ | --------------------- | ------------------------------------------ |
@@ -122,7 +123,7 @@ Admin (`:9001`):
 | `POST` | `/api/aliases/delete` | Delete alias                               |
 | `POST` | `/api/import`         | Batch import aliases                       |
 
-## Environment Variables
+## Environment variables
 
 | Variable               | Default              | Description                                           |
 | ---------------------- | -------------------- | ----------------------------------------------------- |
@@ -135,68 +136,61 @@ Admin (`:9001`):
 | `GOKU_ADMIN_PASSWORD`  | _(empty)_            | Enables login page + session auth for admin UI        |
 | `GOKU_API_KEY`         | _(generated/file)_   | Admin API bearer token                                |
 
-## Homelab/LAN Setup for `go/`
+## Set up golinks on a LAN
 
 If you want links like `http://go/gh` on your LAN, set up local name resolution and route that hostname to goku.
 
-1. Pick a local hostname
+1. Pick a local hostname.
+   - Recommended: `go.home.arpa` or a domain you own.
+   - You can use single-label `go` if your LAN resolver supports it.
 
-- Recommended: `go.home.arpa` or another local domain you control.
-- You can use single-label `go` if your LAN resolver supports it.
+2. Configure DNS, or use a hosts file as a fallback.
+   - DNS: create an `A`/`AAAA` record for your chosen host pointing to the machine running goku or your reverse proxy.
+   - Hosts fallback (per client machine):
 
-1. Configure DNS (or hosts as a fallback)
+     ```text
+     # /etc/hosts (macOS/Linux)
+     192.168.1.50 go go.home.arpa
+     ```
 
-- DNS: create an `A`/`AAAA` record for your chosen host pointing to the machine running goku or your reverse proxy.
-- Hosts fallback (per client machine):
+3. Route traffic to goku's public port, `:9000`.
+   - If you run goku directly on the host, send HTTP traffic for `go` to `:9000`.
+   - If you use a reverse proxy, point that hostname to `http://127.0.0.1:9000`.
+   - If you use Traefik with Docker/service autodiscovery, make the golink redirect router target the public port (`9000`). The admin/API port (`9001`) shows the directory and CRUD API, but it intentionally returns 404 for alias paths.
 
-```text
-# /etc/hosts (macOS/Linux)
-192.168.1.50 go go.home.arpa
-```
+   Minimal examples:
 
-1. Route traffic to goku public port (`:9000`)
+   ```caddyfile
+   go.home.arpa {
+     reverse_proxy 127.0.0.1:9000
+   }
+   ```
 
-- If you run goku directly on the host, send HTTP traffic for `go` to `:9000`.
-- If you use a reverse proxy, point that hostname to `http://127.0.0.1:9000`.
-- If you use Traefik with Docker/service autodiscovery, make the golink redirect router target the public port (`9000`). The admin/API port (`9001`) shows the directory and CRUD API, but it intentionally returns 404 for alias paths.
+   ```nginx
+   server {
+     listen 80;
+     server_name go.home.arpa;
+     location / {
+       proxy_pass http://127.0.0.1:9000;
+     }
+   }
+   ```
 
-Minimal examples:
+   ```yaml
+   # Traefik labels (example)
+   traefik.http.routers.goku.rule=Host(`go.home.arpa`)
+   traefik.http.services.goku.loadbalancer.server.port=9000
+   ```
 
-```caddyfile
-go.home.arpa {
-  reverse_proxy 127.0.0.1:9000
-}
-```
+4. Check the redirect.
+   - Open `http://go.home.arpa/gh` (or `http://go/gh` if using single-label hostnames).
+   - Run `curl -I http://go.home.arpa/gh` and confirm a redirect response.
 
-```nginx
-server {
-  listen 80;
-  server_name go.home.arpa;
-  location / {
-    proxy_pass http://127.0.0.1:9000;
-  }
-}
-```
+## Authentication
 
-```yaml
-# Traefik labels (example)
-traefik.http.routers.goku.rule=Host(`go.home.arpa`)
-traefik.http.services.goku.loadbalancer.server.port=9000
-```
+Set `GOKU_ADMIN_PASSWORD` to require a login for the admin UI. The API accepts the resulting session, basic authentication, or a bearer key.
 
-1. Validate
-
-- Open `http://go.home.arpa/gh` (or `http://go/gh` if using single-label hostnames).
-- Run `curl -I http://go.home.arpa/gh` and confirm a redirect response.
-
-## Authentication Notes
-
-- When `GOKU_ADMIN_PASSWORD` is set:
-  - Admin UI requires login.
-  - API can use session, basic auth, or bearer key.
-- When `GOKU_ADMIN_PASSWORD` is empty:
-  - Admin UI is open.
-  - Bearer key can still protect API endpoints when configured.
+Without `GOKU_ADMIN_PASSWORD`, the admin UI is open. You can still protect API endpoints with a bearer key.
 
 The API key is generated on first run and stored at `config/.api_key` if not supplied via `GOKU_API_KEY`.
 
@@ -218,4 +212,5 @@ The name _goku_ (悟空) is eternally recognizable for anyone familiar with DBZ 
 
 ---
 
-<p align="center">Made with &hearts; in NYC</p>
+<!-- markdownlint-disable-next-line MD033 -->
+<p align="center">Made with ❤️ and 🇩🇴☕ in NYC</p>
