@@ -1,6 +1,7 @@
 package store
 
 import (
+	"cmp"
 	"fmt"
 	"net"
 	"net/url"
@@ -74,20 +75,8 @@ type resolveCandidate struct {
 }
 
 func (c resolveCandidate) moreSpecificThan(other resolveCandidate) bool {
-	if c.score.exact != other.score.exact {
-		return c.score.exact
-	}
-	if c.score.staticSegments != other.score.staticSegments {
-		return c.score.staticSegments > other.score.staticSegments
-	}
-	if c.score.greedyPlaceholders != other.score.greedyPlaceholders {
-		return c.score.greedyPlaceholders < other.score.greedyPlaceholders
-	}
-	if c.score.placeholderSegments != other.score.placeholderSegments {
-		return c.score.placeholderSegments < other.score.placeholderSegments
-	}
-	if c.score.totalSegments != other.score.totalSegments {
-		return c.score.totalSegments > other.score.totalSegments
+	if comparison := c.score.compare(other.score); comparison != 0 {
+		return comparison > 0
 	}
 	return c.index < other.index
 }
@@ -98,6 +87,26 @@ type aliasScore struct {
 	placeholderSegments int
 	greedyPlaceholders  int
 	totalSegments       int
+}
+
+func (s aliasScore) compare(other aliasScore) int {
+	switch {
+	case s.exact != other.exact:
+		if s.exact {
+			return 1
+		}
+		return -1
+	case s.staticSegments != other.staticSegments:
+		return cmp.Compare(s.staticSegments, other.staticSegments)
+	case s.greedyPlaceholders != other.greedyPlaceholders:
+		return cmp.Compare(other.greedyPlaceholders, s.greedyPlaceholders)
+	case s.placeholderSegments != other.placeholderSegments:
+		return cmp.Compare(other.placeholderSegments, s.placeholderSegments)
+	case s.totalSegments != other.totalSegments:
+		return cmp.Compare(s.totalSegments, other.totalSegments)
+	default:
+		return 0
+	}
 }
 
 func aliasSpecificity(aliasPattern string) aliasScore {
@@ -116,6 +125,13 @@ func aliasSpecificity(aliasPattern string) aliasScore {
 		}
 	}
 	return score
+}
+
+// CompareAliasSpecificity compares aliases using the same precedence rules as Resolve.
+// It returns a positive value when a is more specific, a negative value when b is
+// more specific, and zero when configuration order would break the tie.
+func CompareAliasSpecificity(a string, b string) int {
+	return aliasSpecificity(a).compare(aliasSpecificity(b))
 }
 
 // Aliases returns a copy of all configured aliases.

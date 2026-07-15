@@ -413,6 +413,48 @@ func TestResolve_Priority_SpecificTemplateOverFallback(t *testing.T) {
 	}
 }
 
+func TestCompareAliasSpecificity(t *testing.T) {
+	tests := []struct {
+		name string
+		a    string
+		b    string
+		want int
+	}{
+		{
+			name: "exact over defaulted fallback",
+			a:    "test",
+			b:    "{query:=goku}",
+			want: 1,
+		},
+		{
+			name: "specific template over greedy fallback",
+			a:    "r/{rest...}",
+			b:    "{query...}",
+			want: 1,
+		},
+		{
+			name: "equal specificity",
+			a:    "a/{value}",
+			b:    "{value}/b",
+			want: 0,
+		},
+		{
+			name: "reverse ordering",
+			a:    "{query:=goku}",
+			b:    "test",
+			want: -1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CompareAliasSpecificity(tt.a, tt.b); got != tt.want {
+				t.Fatalf("CompareAliasSpecificity(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUpsertAlias_PreservesEnabledState(t *testing.T) {
 	s := New(model.Config{})
 

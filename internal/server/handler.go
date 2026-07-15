@@ -1480,7 +1480,7 @@ func validateAliasInput(alias string, oldAlias string, destination string, alias
 		if existing.Alias == oldAlias || existing.Alias == alias {
 			continue
 		}
-		if aliasesOverlap(alias, existing.Alias) {
+		if aliasesHaveAmbiguousOverlap(alias, existing.Alias) {
 			overlaps = append(overlaps, existing.Alias)
 		}
 	}
@@ -1605,6 +1605,10 @@ func aliasSameShape(a string, b string) bool {
 		}
 	}
 	return true
+}
+
+func aliasesHaveAmbiguousOverlap(a string, b string) bool {
+	return aliasesOverlap(a, b) && store.CompareAliasSpecificity(a, b) == 0
 }
 
 func aliasesOverlap(a string, b string) bool {

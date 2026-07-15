@@ -592,6 +592,64 @@ func TestHandleAddAlias_ValidationError(t *testing.T) {
 	}
 }
 
+func TestValidateAliasInput_DoesNotWarnForResolvedCatchAllOverlap(t *testing.T) {
+	tests := []struct {
+		name     string
+		alias    string
+		existing string
+	}{
+		{
+			name:     "literal over defaulted catch-all",
+			alias:    "test",
+			existing: "{query:=goku}",
+		},
+		{
+			name:     "catch-all under literal",
+			alias:    "{query:=goku}",
+			existing: "test",
+		},
+		{
+			name:     "nested literal over fallback",
+			alias:    "r/test",
+			existing: "r/{query:=goku}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validateAliasInput(
+				tt.alias,
+				"",
+				"",
+				[]model.Alias{{Alias: tt.existing, Destination: "https://example.com"}},
+			)
+
+			if result.State != "success" {
+				t.Fatalf("state = %q, want success; result = %#v", result.State, result)
+			}
+			if len(result.Matches) != 0 {
+				t.Fatalf("matches = %#v, want none", result.Matches)
+			}
+		})
+	}
+}
+
+func TestValidateAliasInput_WarnsForEqualSpecificityOverlap(t *testing.T) {
+	result := validateAliasInput(
+		"a/{value}",
+		"",
+		"",
+		[]model.Alias{{Alias: "{value}/b", Destination: "https://example.com"}},
+	)
+
+	if result.State != "warning" {
+		t.Fatalf("state = %q, want warning; result = %#v", result.State, result)
+	}
+	if len(result.Matches) != 1 || result.Matches[0] != "{value}/b" {
+		t.Fatalf("matches = %#v, want {value}/b", result.Matches)
+	}
+}
+
 func TestValidateDestinationInput_DoesNotTreatSharedHostAsDuplicate(t *testing.T) {
 	result := validateDestinationInput(
 		httptest.NewRequest("GET", "/", nil).Context(),
