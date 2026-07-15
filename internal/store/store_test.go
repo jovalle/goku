@@ -68,15 +68,90 @@ func TestResolve_TemplateRule(t *testing.T) {
 func TestResolve_TemplateRuleWithPlaceholderDefaults(t *testing.T) {
 	s := New(model.Config{
 		Aliases: []model.Alias{
+			{Alias: "t/{:=BarackObama}", Destination: "https://twitter.com/@{}"},
+		},
+	})
+
+	tests := []struct {
+		path string
+		want string
+	}{
+		{path: "t", want: "https://twitter.com/@BarackObama"},
+		{path: "t/jovalle", want: "https://twitter.com/@jovalle"},
+	}
+	for _, tt := range tests {
+		url, err := s.Resolve(tt.path)
+		if err != nil {
+			t.Fatalf("Resolve(%q) error: %v", tt.path, err)
+		}
+		if url != tt.want {
+			t.Errorf("Resolve(%q) = %q, want %q", tt.path, url, tt.want)
+		}
+	}
+}
+
+func TestResolve_NamedTrailingPlaceholderDefaults(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{
+			{Alias: "gh/{owner:=jovalle}/{repo:=goku}", Destination: "https://github.com/{owner}/{repo}"},
+		},
+	})
+
+	tests := []struct {
+		path string
+		want string
+	}{
+		{path: "gh", want: "https://github.com/jovalle/goku"},
+		{path: "gh/openai", want: "https://github.com/openai/goku"},
+		{path: "gh/openai/codex", want: "https://github.com/openai/codex"},
+	}
+	for _, tt := range tests {
+		url, err := s.Resolve(tt.path)
+		if err != nil {
+			t.Fatalf("Resolve(%q) error: %v", tt.path, err)
+		}
+		if url != tt.want {
+			t.Errorf("Resolve(%q) = %q, want %q", tt.path, url, tt.want)
+		}
+	}
+}
+
+func TestResolve_MissingRequiredPlaceholderDoesNotMatch(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{
 			{Alias: "gh/{owner:=jovalle}/{repo}", Destination: "https://github.com/{owner}/{repo}"},
 		},
 	})
-	url, err := s.Resolve("gh/openai/codex")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+
+	_, err := s.Resolve("gh")
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
-	if url != "https://github.com/openai/codex" {
-		t.Errorf("got %q, want %q", url, "https://github.com/openai/codex")
+}
+
+func TestResolve_GreedyPlaceholderDefault(t *testing.T) {
+	s := New(model.Config{
+		Aliases: []model.Alias{
+			{Alias: "r/{rest...:=selfhosted}", Destination: "https://www.reddit.com/r/{rest...}"},
+			{Alias: "browse/{section:=topics}/{rest...:=latest}", Destination: "https://example.com/{section}/{rest...}"},
+		},
+	})
+
+	tests := []struct {
+		path string
+		want string
+	}{
+		{path: "r", want: "https://www.reddit.com/r/selfhosted"},
+		{path: "browse", want: "https://example.com/topics/latest"},
+	}
+	for _, tt := range tests {
+		url, err := s.Resolve(tt.path)
+		if err != nil {
+			t.Fatalf("Resolve(%q) error: %v", tt.path, err)
+		}
+		if url != tt.want {
+			t.Errorf("Resolve(%q) = %q, want %q", tt.path, url, tt.want)
+		}
 	}
 }
 
@@ -292,7 +367,7 @@ func TestResolve_Priority_ExactOverPrefix(t *testing.T) {
 	s := New(model.Config{
 		Aliases: []model.Alias{
 			{Alias: "r", Destination: "https://exact.example.com"},
-			{Alias: "r/{rest...}", Destination: "https://reddit.com/r/{rest...}"},
+			{Alias: "r/{rest...:=selfhosted}", Destination: "https://reddit.com/r/{rest...}"},
 		},
 	})
 	url, err := s.Resolve("r")

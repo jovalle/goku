@@ -351,7 +351,7 @@ func matchAlias(path, aliasPattern, destination string) (string, bool) {
 	for ; i < len(patternParts); i++ {
 		part := patternParts[i]
 
-		name, placeholder, greedy := parsePlaceholder(part)
+		name, defaultValue, placeholder, greedy := parsePlaceholderSpec(part)
 		if !placeholder {
 			if i >= len(pathParts) || part != pathParts[i] {
 				return "", false
@@ -360,10 +360,15 @@ func matchAlias(path, aliasPattern, destination string) (string, bool) {
 		}
 
 		if greedy {
-			if i > len(pathParts) {
+			captured := defaultValue
+			if i <= len(pathParts) {
+				captured = strings.Join(pathParts[i:], "/")
+				if captured == "" && defaultValue != "" {
+					captured = defaultValue
+				}
+			} else if defaultValue == "" {
 				return "", false
 			}
-			captured := strings.Join(pathParts[i:], "/")
 			if name == "" {
 				unnamedCount++
 				captures[fmt.Sprintf("{}#%d", unnamedCount)] = captured
@@ -376,15 +381,20 @@ func matchAlias(path, aliasPattern, destination string) (string, bool) {
 			break
 		}
 
+		captured := defaultValue
 		if i >= len(pathParts) {
-			return "", false
+			if defaultValue == "" {
+				return "", false
+			}
+		} else {
+			captured = pathParts[i]
 		}
 		if name == "" {
 			unnamedCount++
-			captures[fmt.Sprintf("{}#%d", unnamedCount)] = pathParts[i]
-			captures["{}"] = pathParts[i]
+			captures[fmt.Sprintf("{}#%d", unnamedCount)] = captured
+			captures["{}"] = captured
 		} else {
-			captures["{"+name+"}"] = pathParts[i]
+			captures["{"+name+"}"] = captured
 		}
 	}
 
