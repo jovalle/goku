@@ -4,6 +4,10 @@ set -eu
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+if command -v just >/dev/null 2>&1; then
+  just outdated || true
+fi
+
 printf '%s\n' 'Running go test -race -coverprofile=coverage.out ./...'
 go test -race -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out

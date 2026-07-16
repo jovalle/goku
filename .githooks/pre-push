@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if command -v just >/dev/null 2>&1; then
+  just outdated || true
+  printf '%s\n' 'Running govulncheck (just vulncheck)'
+  just vulncheck
+else
+  printf '%s\n' 'Running govulncheck'
+  GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+fi

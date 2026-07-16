@@ -38,7 +38,7 @@ cover:
   @echo ""
   @echo "To open in browser: go tool cover -html=coverage.out"
 
-install-hooks:
+hooks:
   git config core.hooksPath .githooks
 
 build:
@@ -46,15 +46,39 @@ build:
     -o bin/goku ./cmd/goku
 
 vulncheck:
-  go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+  GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 # Propagate the go.mod Go version to the CI/release workflows and Dockerfile.
-sync-versions:
+sync:
   @gv="$(awk '/^go [0-9]/ {print $2; exit}' go.mod)"; \
   GV="$gv" perl -i -pe 's/(go-version:\s*")[\d.]+(")/$1$ENV{GV}$2/' \
     .github/workflows/ci.yml .github/workflows/release.yml; \
   GV="$gv" perl -i -pe 's/(golang:)[\d.]+(-alpine)/$1$ENV{GV}$2/' Dockerfile; \
   echo "Synced Go version to $gv across workflows and Dockerfile"
+
+# Best-effort, non-blocking notice when a newer Go release is available (used by hooks).
+outdated:
+  @current="$(awk '/^go [0-9]/ {print $2; exit}' go.mod)"; \
+  latest="$(curl -fsS --max-time 3 'https://go.dev/VERSION?m=text' 2>/dev/null | head -n1 | sed 's/^go//')" || true; \
+  if [ -n "${latest:-}" ] && [ "$current" != "$latest" ]; then \
+    printf '\033[33m[goku] Go %s is available (current: %s). Run: just upgrade\033[0m\n' "$latest" "$current"; \
+  fi
+
+# Detect the latest Go release and, after confirmation, upgrade go.mod and sync everything.
+upgrade:
+  @current="$(awk '/^go [0-9]/ {print $2; exit}' go.mod)"; \
+  latest="$(curl -fsS --max-time 10 'https://go.dev/VERSION?m=text' | head -n1 | sed 's/^go//')"; \
+  if [ -z "$latest" ]; then echo "Could not determine the latest Go version"; exit 1; fi; \
+  if [ "$current" = "$latest" ]; then echo "Go is already up to date ($current)"; exit 0; fi; \
+  printf 'Upgrade Go %s -> %s across go.mod, workflows, and Dockerfile? [y/N] ' "$current" "$latest"; \
+  read -r reply; \
+  case "$reply" in [yY]|[yY][eE][sS]) ;; *) echo "Aborted."; exit 0;; esac; \
+  go mod edit -go="$latest"; \
+  if [ -f go.work ]; then go work edit -go="$latest"; fi; \
+  just sync; \
+  echo "Verifying with govulncheck..."; \
+  just vulncheck; \
+  echo "Upgraded to Go $latest. Review the diff, then commit."
 
 run:
   go run ./cmd/goku
@@ -65,4 +89,4 @@ docker:
 clean:
   rm -rf bin/ coverage.out
 
-ci: sync-versions lint test build vulncheck
+ci: sync lint test build vulncheck
