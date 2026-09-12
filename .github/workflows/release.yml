@@ -33,6 +33,7 @@ jobs:
         id: merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           pr_number=$(gh pr list \
             --base main \
