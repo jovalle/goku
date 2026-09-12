@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jovalle/goku/internal/model"
@@ -87,8 +88,8 @@ func TestSave_RoundTrip(t *testing.T) {
 	path := filepath.Join(dir, "config.yaml")
 	original := model.Config{
 		Aliases: []model.Alias{
-			{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)},
-			{Alias: "g", Destination: "https://google.com", Enabled: model.BoolPtr(true)},
+			{Alias: "gh", Destination: "https://github.com", Enabled: new(true)},
+			{Alias: "g", Destination: "https://google.com", Enabled: new(true)},
 		},
 	}
 	if err := Save(path, original); err != nil {
@@ -115,7 +116,7 @@ func TestSave_UsesTwoSpaceIndentation(t *testing.T) {
 	path := filepath.Join(dir, "config.yaml")
 	cfg := model.Config{
 		Aliases: []model.Alias{
-			{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)},
+			{Alias: "gh", Destination: "https://github.com", Enabled: new(true)},
 		},
 	}
 
@@ -139,22 +140,26 @@ func TestSave_UsesTwoSpaceIndentation(t *testing.T) {
 func TestSave_AtomicNoPreviousFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "new.yaml")
-	cfg := model.Config{Aliases: []model.Alias{{Alias: "x", Destination: "https://x.com", Enabled: model.BoolPtr(true)}}}
+	cfg := model.Config{Aliases: []model.Alias{{Alias: "x", Destination: "https://x.com", Enabled: new(true)}}}
 	if err := Save(path, cfg); err != nil {
 		t.Fatalf("Save() error: %v", err)
 	}
-	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
-		t.Error("temp file should be cleaned up after Save")
+	tempFiles, err := filepath.Glob(filepath.Join(dir, ".new.yaml.*.tmp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tempFiles) != 0 {
+		t.Fatalf("temp files were not cleaned up: %v", tempFiles)
 	}
 }
 
 func TestSave_OverwriteExisting(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	if err := Save(path, model.Config{Aliases: []model.Alias{{Alias: "a", Destination: "https://a.com", Enabled: model.BoolPtr(true)}}}); err != nil {
+	if err := Save(path, model.Config{Aliases: []model.Alias{{Alias: "a", Destination: "https://a.com", Enabled: new(true)}}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := Save(path, model.Config{Aliases: []model.Alias{{Alias: "b", Destination: "https://b.com", Enabled: model.BoolPtr(true)}}}); err != nil {
+	if err := Save(path, model.Config{Aliases: []model.Alias{{Alias: "b", Destination: "https://b.com", Enabled: new(true)}}}); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := Load(path)
@@ -166,6 +171,38 @@ func TestSave_OverwriteExisting(t *testing.T) {
 	}
 	if got, ok := findAlias(loaded.Aliases, "b"); !ok || got.Destination != "https://b.com" {
 		t.Fatalf("alias b was not saved: %#v", loaded.Aliases)
+	}
+}
+
+func TestSave_ConcurrentWritesRemainComplete(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	const writerCount = 20
+	errs := make(chan error, writerCount)
+
+	var wg sync.WaitGroup
+	for i := range writerCount {
+		wg.Go(func() {
+			alias := string(rune('a' + i))
+			errs <- Save(path, model.Config{Aliases: []model.Alias{{
+				Alias:       alias,
+				Destination: "https://example.com/" + alias,
+			}}})
+		})
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("Save() error: %v", err)
+		}
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(loaded.Aliases) != 1 {
+		t.Fatalf("loaded aliases = %d, want one complete writer result", len(loaded.Aliases))
 	}
 }
 

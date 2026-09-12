@@ -461,7 +461,7 @@ func TestUpsertAlias_PreservesEnabledState(t *testing.T) {
 	cfg, err := s.UpsertAlias(model.Alias{
 		Alias:       "docs",
 		Destination: "https://docs.example.com",
-		Enabled:     model.BoolPtr(false),
+		Enabled:     new(false),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -489,7 +489,10 @@ func TestDeleteAliases(t *testing.T) {
 		},
 	})
 
-	cfg := s.DeleteAliases([]string{"gh", "wiki", "missing"})
+	cfg, err := s.DeleteAliases([]string{"gh", "wiki", "missing"})
+	if err != nil {
+		t.Fatalf("DeleteAliases() error: %v", err)
+	}
 	if len(cfg.Aliases) != 1 {
 		t.Fatalf("expected 1 alias after delete, got %d", len(cfg.Aliases))
 	}
@@ -502,6 +505,21 @@ func TestDeleteAliases(t *testing.T) {
 	}
 	if _, err := s.Resolve("wiki"); !errors.Is(err, resolve.ErrNotFound) {
 		t.Fatalf("deleted alias wiki should not resolve, got %v", err)
+	}
+}
+
+func TestMutationIsNotPublishedWhenPersistenceFails(t *testing.T) {
+	s := New(seedConfig())
+	s.SetPersistence(func(model.Config) error {
+		return errors.New("disk full")
+	})
+
+	_, err := s.AddAlias("docs", "https://docs.example.com")
+	if !errors.Is(err, ErrPersistence) {
+		t.Fatalf("AddAlias() error = %v, want ErrPersistence", err)
+	}
+	if _, ok := s.Alias("docs"); ok {
+		t.Fatal("failed mutation was published to the live store")
 	}
 }
 
@@ -537,24 +555,20 @@ func TestConfig_ReturnsCopy(t *testing.T) {
 func TestConcurrentAccess(t *testing.T) {
 	s := New(seedConfig())
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(3)
-		go func() {
-			defer wg.Done()
+	for i := range 100 {
+		wg.Go(func() {
 			s.Resolve("gh")
-		}()
-		go func() {
-			defer wg.Done()
+		})
+		wg.Go(func() {
 			s.Aliases()
-		}()
-		go func(n int) {
-			defer wg.Done()
-			if n%2 == 0 {
+		})
+		wg.Go(func() {
+			if i%2 == 0 {
 				s.AddAlias("tmp", "https://tmp.example.com")
 			} else {
 				s.DeleteAlias("tmp")
 			}
-		}(i)
+		})
 	}
 	wg.Wait()
 }
@@ -570,7 +584,7 @@ func findAlias(aliases []model.Alias, alias string) (model.Alias, bool) {
 
 func TestResolve_DisabledAliasIsIgnored(t *testing.T) {
 	s := New(model.Config{
-		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(false)}},
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: new(false)}},
 	})
 
 	_, err := s.Resolve("gh")

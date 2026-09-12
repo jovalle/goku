@@ -14,7 +14,7 @@ func TestRegister(t *testing.T) {
 		prometheus.DefaultRegisterer = previousRegisterer
 	})
 
-	Register()
+	Register(func() float64 { return 2 })
 	RedirectsTotal.WithLabelValues("test")
 	RequestDuration.WithLabelValues("GET", "200")
 
@@ -28,13 +28,16 @@ func TestRegister(t *testing.T) {
 	}
 	for _, name := range []string{
 		"goku_aliases_configured",
-		"goku_config_reloads_total",
 		"goku_redirects_total",
 		"goku_request_duration_seconds",
-		"goku_resolve_errors_total",
 	} {
 		if !got[name] {
 			t.Errorf("metric %q was not registered", name)
+		}
+	}
+	for _, family := range families {
+		if family.GetName() == "goku_aliases_configured" && family.GetMetric()[0].GetGauge().GetValue() != 2 {
+			t.Errorf("goku_aliases_configured = %v, want 2", family.GetMetric()[0].GetGauge().GetValue())
 		}
 	}
 }

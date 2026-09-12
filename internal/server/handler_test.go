@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,9 +22,10 @@ import (
 )
 
 type testServers struct {
-	admin  *Server
-	public *Server
-	store  *store.AliasStore
+	admin      *Server
+	public     *Server
+	store      *store.AliasStore
+	configPath string
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -44,9 +47,10 @@ func newTestServers(t *testing.T, cfg model.Config, auth AuthConfig) testServers
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	return testServers{
-		admin:  NewAdmin(s, logger, cfgPath, auth),
-		public: NewPublic(s, logger),
-		store:  s,
+		admin:      NewAdmin(s, logger, cfgPath, auth),
+		public:     NewPublic(s, logger),
+		store:      s,
+		configPath: cfgPath,
 	}
 }
 
@@ -171,6 +175,22 @@ func TestHandleAliasStatuses(t *testing.T) {
 	}
 	if !strings.Contains(details["sub/{subreddit}"], "template destination") {
 		t.Errorf("templated missing detail = %q, want template destination detail", details["sub/{subreddit}"])
+	}
+}
+
+func TestAliasStatusCheckerDropsRemovedAliasesFromCache(t *testing.T) {
+	now := time.Now().UTC()
+	checker := newAliasStatusChecker()
+	checker.cache["https://active.example"] = aliasStatusProbe{CheckedAt: now, State: "online"}
+	checker.cache["https://removed.example"] = aliasStatusProbe{CheckedAt: now, State: "online"}
+
+	checker.statuses(t.Context(), []model.Alias{{Alias: "active", Destination: "https://active.example"}})
+
+	if _, ok := checker.cache["https://removed.example"]; ok {
+		t.Fatal("removed alias remained in status cache")
+	}
+	if _, ok := checker.cache["https://active.example"]; !ok {
+		t.Fatal("active alias was removed from status cache")
 	}
 }
 
@@ -553,6 +573,63 @@ func TestHandleAddAlias(t *testing.T) {
 	}
 }
 
+func TestHandleAddAlias_DoesNotPublishFailedSave(t *testing.T) {
+	srvs := newTestServers(t, model.Config{}, AuthConfig{})
+	srvs.store.SetPersistence(func(model.Config) error {
+		return errors.New("disk full")
+	})
+
+	form := url.Values{"alias": {"docs"}, "destination": {"https://docs.example.com"}}
+	req := httptest.NewRequest("POST", "/api/aliases", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	srvs.admin.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", w.Code)
+	}
+	if _, ok := srvs.store.Alias("docs"); ok {
+		t.Fatal("failed save published docs to the live store")
+	}
+}
+
+func TestHandleAddAlias_ConcurrentSavesPreserveAllAliases(t *testing.T) {
+	srvs := newTestServers(t, model.Config{}, AuthConfig{})
+	const aliasCount = 20
+	statuses := make(chan int, aliasCount)
+
+	var wg sync.WaitGroup
+	for i := range aliasCount {
+		wg.Go(func() {
+			alias := string(rune('a' + i))
+			form := url.Values{"alias": {alias}, "destination": {"https://example.com/" + alias}}
+			req := httptest.NewRequest("POST", "/api/aliases", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			w := httptest.NewRecorder()
+			srvs.admin.ServeHTTP(w, req)
+			statuses <- w.Code
+		})
+	}
+	wg.Wait()
+	close(statuses)
+
+	for status := range statuses {
+		if status != http.StatusSeeOther {
+			t.Fatalf("status = %d, want 303", status)
+		}
+	}
+	persisted, err := config.Load(srvs.configPath)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(persisted.Aliases) != aliasCount {
+		t.Fatalf("persisted aliases = %d, want %d", len(persisted.Aliases), aliasCount)
+	}
+	if len(srvs.store.Aliases()) != aliasCount {
+		t.Fatalf("live aliases = %d, want %d", len(srvs.store.Aliases()), aliasCount)
+	}
+}
+
 func TestHandleAddAlias_MissingFields(t *testing.T) {
 	srv := newAdminTestServer(t, model.Config{})
 	tests := []struct {
@@ -862,7 +939,7 @@ func TestHandleEditAlias_JSONResponse(t *testing.T) {
 	srvs := newTestServers(t, model.Config{
 		Aliases: []model.Alias{
 			{Alias: "gh", Destination: "https://github.com"},
-			{Alias: "docs", Destination: "https://docs.example.com", Enabled: model.BoolPtr(false)},
+			{Alias: "docs", Destination: "https://docs.example.com", Enabled: new(false)},
 		},
 	}, AuthConfig{})
 
@@ -1101,7 +1178,7 @@ func TestHandleAliasPreview_MissingAliasNamesAlias(t *testing.T) {
 
 func TestHandleAliasPreview_DisabledAliasNamesAlias(t *testing.T) {
 	srv := newPublicTestServer(t, model.Config{
-		Aliases: []model.Alias{{Alias: "wiki", Destination: "https://en.wikipedia.org/wiki/{topic}", Enabled: model.BoolPtr(false)}},
+		Aliases: []model.Alias{{Alias: "wiki", Destination: "https://en.wikipedia.org/wiki/{topic}", Enabled: new(false)}},
 	})
 
 	req := httptest.NewRequest("GET", "/preview?alias=wiki", nil)
@@ -1179,6 +1256,34 @@ func TestHandleBatchImport_JSON(t *testing.T) {
 	}
 	if resp.TotalAliases != 3 {
 		t.Fatalf("total_aliases = %d, want 3", resp.TotalAliases)
+	}
+}
+
+func TestImportHandlersRejectOversizedBodies(t *testing.T) {
+	srv := newAdminTestServer(t, model.Config{})
+	largeContent := strings.Repeat("x", int(maxImportBodyBytes)+1)
+	tests := []struct {
+		name        string
+		path        string
+		contentType string
+		body        string
+	}{
+		{name: "import", path: "/api/import", contentType: "text/plain", body: largeContent},
+		{name: "preview", path: "/api/import/preview", contentType: "application/json", body: `{"content":"` + largeContent + `"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.body))
+			req.Header.Set("Content-Type", test.contentType)
+			w := httptest.NewRecorder()
+
+			srv.ServeHTTP(w, req)
+
+			if w.Code != http.StatusRequestEntityTooLarge {
+				t.Fatalf("status = %d, want 413; body = %q", w.Code, w.Body.String())
+			}
+		})
 	}
 }
 

@@ -109,91 +109,6 @@ func TestStatusRecorder_ExplicitStatus(t *testing.T) {
 		t.Errorf("status = %d, want 404", rec.status)
 	}
 }
-func TestCheckAuth_NoAuthConfigured(t *testing.T) {
-	srv := newTestServer(t, model.Config{})
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	if !srv.checkAuth(w, req) {
-		t.Error("checkAuth should return true when no auth is configured")
-	}
-}
-
-func TestCheckAuth_BearerToken_Valid(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
-	req := httptest.NewRequest("GET", "/api/aliases", nil)
-	req.Header.Set("Authorization", "Bearer test-key-123")
-	w := httptest.NewRecorder()
-	if !srv.checkAuth(w, req) {
-		t.Error("checkAuth should accept valid bearer token")
-	}
-}
-
-func TestCheckAuth_BearerToken_Invalid(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Password: "secret", APIKey: "test-key-123"})
-	req := httptest.NewRequest("GET", "/api/aliases", nil)
-	req.Header.Set("Authorization", "Bearer wrong-key")
-	w := httptest.NewRecorder()
-	if srv.checkAuth(w, req) {
-		t.Error("checkAuth should reject invalid bearer token")
-	}
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want 401", w.Code)
-	}
-}
-
-func TestCheckAuth_BasicAuth_Valid(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Username: "admin", Password: "secret"})
-	req := httptest.NewRequest("GET", "/", nil)
-	req.SetBasicAuth("admin", "secret")
-	w := httptest.NewRecorder()
-	if !srv.checkAuth(w, req) {
-		t.Error("checkAuth should accept valid basic auth")
-	}
-}
-
-func TestCheckAuth_BasicAuth_WrongPassword(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Username: "admin", Password: "secret"})
-	req := httptest.NewRequest("GET", "/", nil)
-	req.SetBasicAuth("admin", "wrong")
-	w := httptest.NewRecorder()
-	if srv.checkAuth(w, req) {
-		t.Error("checkAuth should reject wrong password")
-	}
-}
-
-func TestCheckAuth_BasicAuth_WrongUsername(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Username: "admin", Password: "secret"})
-	req := httptest.NewRequest("GET", "/", nil)
-	req.SetBasicAuth("hacker", "secret")
-	w := httptest.NewRecorder()
-	if srv.checkAuth(w, req) {
-		t.Error("checkAuth should reject wrong username")
-	}
-}
-
-func TestCheckAuth_NoCreds(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{Username: "admin", Password: "secret"})
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	if srv.checkAuth(w, req) {
-		t.Error("checkAuth should reject missing credentials")
-	}
-	if w.Header().Get("WWW-Authenticate") == "" {
-		t.Error("expected WWW-Authenticate header")
-	}
-}
-
-func TestCheckAuth_APIKeyAloneDoesNotEnableAuth(t *testing.T) {
-	srv := newAuthServer(t, model.Config{}, AuthConfig{APIKey: "test-key-123"})
-	req := httptest.NewRequest("GET", "/", nil)
-	w := httptest.NewRecorder()
-	if !srv.checkAuth(w, req) {
-		t.Error("checkAuth should return true when only an API key is configured")
-	}
-	if w.Header().Get("WWW-Authenticate") != "" {
-		t.Error("did not expect WWW-Authenticate header when auth is disabled")
-	}
-}
 func TestChain(t *testing.T) {
 	var order []string
 	mw1 := func(next http.Handler) http.Handler {
@@ -229,7 +144,7 @@ func TestChain(t *testing.T) {
 }
 func TestFullRequestLifecycle(t *testing.T) {
 	srv := newTestServer(t, model.Config{
-		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: new(true)}},
 	})
 	req := httptest.NewRequest("GET", "/gh", nil)
 	w := httptest.NewRecorder()

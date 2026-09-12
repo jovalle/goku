@@ -124,11 +124,6 @@ func (s *Server) uiAuthEnabled() bool {
 	return s.auth.Password != ""
 }
 
-// requireAuth keeps backward compatibility and maps to API auth behavior.
-func (s *Server) requireAuth(next http.Handler) http.Handler {
-	return s.requireAPIAuth(next)
-}
-
 // requireAPIAuth enforces authentication for admin API endpoints.
 func (s *Server) requireAPIAuth(next http.Handler) http.Handler {
 	if !s.authEnabled() {
@@ -140,19 +135,6 @@ func (s *Server) requireAPIAuth(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// checkAuth validates UI credentials (legacy behavior for tests/helpers).
-func (s *Server) checkAuth(w http.ResponseWriter, r *http.Request) bool {
-	if !s.uiAuthEnabled() {
-		return true
-	}
-	if s.validSession(r) || s.validBasic(r) || s.validBearer(r) {
-		return true
-	}
-	w.Header().Set("WWW-Authenticate", `Basic realm="goku"`)
-	http.Error(w, "unauthorized", http.StatusUnauthorized)
-	return false
 }
 
 func (s *Server) checkAPIAuth(w http.ResponseWriter, r *http.Request) bool {

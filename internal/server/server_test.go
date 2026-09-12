@@ -36,7 +36,7 @@ func TestConfigReload_Integration(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "config.yaml")
 
-	initial := model.Config{Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}}}
+	initial := model.Config{Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: new(true)}}}
 	if err := config.Save(cfgPath, initial); err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestConfigReload_Integration(t *testing.T) {
 		t.Fatalf("initial: status = %d, want 302", w.Code)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	watchErr := make(chan error, 1)
 	go func() {
@@ -75,8 +75,8 @@ func TestConfigReload_Integration(t *testing.T) {
 
 	updated := model.Config{
 		Aliases: []model.Alias{
-			{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)},
-			{Alias: "g", Destination: "https://google.com", Enabled: model.BoolPtr(true)},
+			{Alias: "gh", Destination: "https://github.com", Enabled: new(true)},
+			{Alias: "g", Destination: "https://google.com", Enabled: new(true)},
 		},
 	}
 	if err := config.Save(cfgPath, updated); err != nil {
@@ -140,7 +140,7 @@ func TestE2E_AddLinkThenRedirect(t *testing.T) {
 
 func TestE2E_AddThenDeleteLink(t *testing.T) {
 	srv := newTestServer(t, model.Config{
-		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: model.BoolPtr(true)}},
+		Aliases: []model.Alias{{Alias: "gh", Destination: "https://github.com", Enabled: new(true)}},
 	})
 
 	delReq := httptest.NewRequest("POST", "/api/aliases/gh/delete", nil)

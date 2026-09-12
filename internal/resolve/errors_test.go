@@ -39,9 +39,9 @@ func TestResolveError_Unwrap(t *testing.T) {
 		t.Error("expected errors.Is(err, ErrNotFound) to be true")
 	}
 
-	var re *ResolveError
-	if !errors.As(err, &re) {
-		t.Error("expected errors.As to succeed")
+	re, ok := errors.AsType[*ResolveError](err)
+	if !ok {
+		t.Error("expected errors.AsType to succeed")
 	}
 	if re.Path != "gh" {
 		t.Errorf("Path = %q, want %q", re.Path, "gh")

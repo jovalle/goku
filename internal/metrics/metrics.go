@@ -21,33 +21,16 @@ var (
 		},
 		[]string{"method", "status"},
 	)
-
-	// ResolveErrors counts resolution failures.
-	ResolveErrors = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "goku_resolve_errors_total",
-		Help: "Total number of failed path resolutions.",
-	})
-
-	// ConfigReloads counts config file reloads.
-	ConfigReloads = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "goku_config_reloads_total",
-		Help: "Total number of config reloads.",
-	})
-
-	// AliasesTotal shows the current alias count.
-	AliasesTotal = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "goku_aliases_configured",
-		Help: "Current number of configured aliases.",
-	})
 )
 
 // Register registers all goku metrics with Prometheus.
-func Register() {
+func Register(aliasCount func() float64) {
 	prometheus.MustRegister(
 		RedirectsTotal,
 		RequestDuration,
-		ResolveErrors,
-		ConfigReloads,
-		AliasesTotal,
+		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Name: "goku_aliases_configured",
+			Help: "Current number of configured aliases.",
+		}, aliasCount),
 	)
 }

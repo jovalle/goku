@@ -48,14 +48,3 @@ func (a Alias) MarshalYAML() (any, error) {
 func (a Alias) IsEnabled() bool {
 	return a.Enabled == nil || *a.Enabled
 }
-
-// WithEnabled returns a copy with the given enabled state.
-func (a Alias) WithEnabled(enabled bool) Alias {
-	a.Enabled = BoolPtr(enabled)
-	return a
-}
-
-func BoolPtr(v bool) *bool {
-	b := v
-	return &b
-}

@@ -2,9 +2,11 @@ package store
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 
@@ -15,14 +17,24 @@ import (
 // AliasStore holds the current config and resolves alias paths to URLs.
 // All methods are safe for concurrent use.
 type AliasStore struct {
-	mu     sync.RWMutex
-	config model.Config
+	mu      sync.RWMutex
+	config  model.Config
+	persist func(model.Config) error
 }
+
+var ErrPersistence = errors.New("persisting config")
 
 // New creates an AliasStore with nil-safe defaults.
 func New(cfg model.Config) *AliasStore {
 	cfg = normalizeConfig(cfg)
 	return &AliasStore{config: cfg}
+}
+
+// SetPersistence configures the function used to persist mutations.
+func (s *AliasStore) SetPersistence(persist func(model.Config) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.persist = persist
 }
 
 // Resolve finds the redirect URL for an alias path.
@@ -148,39 +160,51 @@ func (s *AliasStore) Aliases() []model.Alias {
 
 // AddAlias adds or replaces an alias and returns the updated config.
 func (s *AliasStore) AddAlias(alias, destination string) (model.Config, error) {
-	return s.UpsertAlias(model.Alias{Alias: alias, Destination: destination, Enabled: model.BoolPtr(true)})
+	return s.UpsertAlias(model.Alias{Alias: alias, Destination: destination, Enabled: new(true)})
 }
 
 // UpsertAlias adds or replaces an alias and preserves the provided enabled state.
 func (s *AliasStore) UpsertAlias(alias model.Alias) (model.Config, error) {
-	normalizedAlias, normalizedDestination, err := NormalizeAliasAndDestination(alias.Alias, alias.Destination)
-	if err != nil {
-		return model.Config{}, err
-	}
-	alias.Alias = normalizedAlias
-	alias.Destination = normalizedDestination
-	if err := ValidateAlias(alias.Alias, alias.Destination); err != nil {
-		return model.Config{}, err
-	}
-	if alias.Enabled == nil {
-		alias.Enabled = model.BoolPtr(true)
+	return s.UpsertAliases([]model.Alias{alias})
+}
+
+// UpsertAliases adds or replaces aliases in one transaction.
+func (s *AliasStore) UpsertAliases(aliases []model.Alias) (model.Config, error) {
+	normalized := make([]model.Alias, len(aliases))
+	for i, alias := range aliases {
+		normalizedAlias, normalizedDestination, err := NormalizeAliasAndDestination(alias.Alias, alias.Destination)
+		if err != nil {
+			return model.Config{}, err
+		}
+		alias.Alias = normalizedAlias
+		alias.Destination = normalizedDestination
+		if err := ValidateAlias(alias.Alias, alias.Destination); err != nil {
+			return model.Config{}, err
+		}
+		if alias.Enabled == nil {
+			alias.Enabled = new(true)
+		}
+		normalized[i] = alias
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	replaced := false
-	for i := range s.config.Aliases {
-		if s.config.Aliases[i].Alias == alias.Alias {
-			s.config.Aliases[i] = cloneAlias(alias)
-			replaced = true
-			break
+	next := s.configCopy()
+	for _, alias := range normalized {
+		replaced := false
+		for i := range next.Aliases {
+			if next.Aliases[i].Alias == alias.Alias {
+				next.Aliases[i] = cloneAlias(alias)
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			next.Aliases = append(next.Aliases, cloneAlias(alias))
 		}
 	}
-	if !replaced {
-		s.config.Aliases = append(s.config.Aliases, cloneAlias(alias))
-	}
-	return s.configCopy(), nil
+	return s.commit(next)
 }
 
 // UpdateAlias edits an existing alias. If oldAlias does not exist, it upserts by alias.
@@ -196,7 +220,7 @@ func (s *AliasStore) UpdateAlias(oldAlias, alias, destination string, enabled bo
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	updated := model.Alias{Alias: alias, Destination: destination, Enabled: model.BoolPtr(enabled)}
+	updated := model.Alias{Alias: alias, Destination: destination, Enabled: new(enabled)}
 	newAliases := make([]model.Alias, 0, len(s.config.Aliases)+1)
 	replaced := false
 
@@ -228,8 +252,7 @@ func (s *AliasStore) UpdateAlias(oldAlias, alias, destination string, enabled bo
 		}
 	}
 
-	s.config.Aliases = newAliases
-	return s.configCopy(), nil
+	return s.commit(model.Config{Aliases: newAliases})
 }
 
 // SetAliasEnabled updates the enabled state for an existing alias.
@@ -237,12 +260,13 @@ func (s *AliasStore) SetAliasEnabled(alias string, enabled bool) (model.Config, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i := range s.config.Aliases {
-		if s.config.Aliases[i].Alias != alias {
+	next := s.configCopy()
+	for i := range next.Aliases {
+		if next.Aliases[i].Alias != alias {
 			continue
 		}
-		s.config.Aliases[i].Enabled = model.BoolPtr(enabled)
-		return s.configCopy(), nil
+		next.Aliases[i].Enabled = new(enabled)
+		return s.commit(next)
 	}
 
 	return model.Config{}, fmt.Errorf("alias not found")
@@ -263,12 +287,12 @@ func (s *AliasStore) Alias(alias string) (model.Alias, bool) {
 }
 
 // DeleteAlias removes an alias by exact alias pattern and returns the updated config.
-func (s *AliasStore) DeleteAlias(alias string) model.Config {
+func (s *AliasStore) DeleteAlias(alias string) (model.Config, error) {
 	return s.DeleteAliases([]string{alias})
 }
 
 // DeleteAliases removes aliases by exact alias pattern and returns the updated config.
-func (s *AliasStore) DeleteAliases(aliases []string) model.Config {
+func (s *AliasStore) DeleteAliases(aliases []string) (model.Config, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -288,8 +312,7 @@ func (s *AliasStore) DeleteAliases(aliases []string) model.Config {
 		}
 		kept = append(kept, a)
 	}
-	s.config.Aliases = kept
-	return s.configCopy()
+	return s.commit(model.Config{Aliases: kept})
 }
 
 // Config returns a copy of the current config.
@@ -309,11 +332,26 @@ func (s *AliasStore) Update(cfg model.Config) {
 
 // configCopy returns a deep copy of config. Caller must hold at least a read lock.
 func (s *AliasStore) configCopy() model.Config {
-	aliases := make([]model.Alias, len(s.config.Aliases))
-	for i := range s.config.Aliases {
-		aliases[i] = cloneAlias(s.config.Aliases[i])
-	}
+	return cloneConfig(s.config)
+}
 
+// commit persists a candidate config before publishing it. Caller must hold the write lock.
+func (s *AliasStore) commit(cfg model.Config) (model.Config, error) {
+	cfg = normalizeConfig(cfg)
+	if s.persist != nil {
+		if err := s.persist(cloneConfig(cfg)); err != nil {
+			return model.Config{}, fmt.Errorf("%w: %w", ErrPersistence, err)
+		}
+	}
+	s.config = cfg
+	return s.configCopy(), nil
+}
+
+func cloneConfig(cfg model.Config) model.Config {
+	aliases := make([]model.Alias, len(cfg.Aliases))
+	for i := range cfg.Aliases {
+		aliases[i] = cloneAlias(cfg.Aliases[i])
+	}
 	return model.Config{Aliases: aliases}
 }
 
@@ -337,9 +375,7 @@ func normalizeConfig(cfg model.Config) model.Config {
 		dedup = append(dedup, a)
 	}
 
-	for i, j := 0, len(dedup)-1; i < j; i, j = i+1, j-1 {
-		dedup[i], dedup[j] = dedup[j], dedup[i]
-	}
+	slices.Reverse(dedup)
 
 	return model.Config{
 		Aliases: dedup,
@@ -352,7 +388,7 @@ func cloneAlias(a model.Alias) model.Alias {
 		Destination: a.Destination,
 	}
 	if a.Enabled != nil {
-		cloned.Enabled = model.BoolPtr(*a.Enabled)
+		cloned.Enabled = new(*a.Enabled)
 	}
 	return cloned
 }
@@ -662,6 +698,11 @@ func ValidateAlias(alias, destination string) error {
 	}
 
 	return nil
+}
+
+// ValidateDestination validates a normalized HTTP or HTTPS destination template.
+func ValidateDestination(destination string) error {
+	return validateDestinationURL(NormalizeDestination(destination))
 }
 
 func destinationContainsPlaceholder(destination string, canonical string) bool {

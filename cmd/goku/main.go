@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -68,8 +70,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 
 	logger.Info("config loaded", "aliases", len(cfg.Aliases))
 
-	metrics.Register()
-	metrics.AliasesTotal.Set(float64(len(cfg.Aliases)))
+	s := store.New(cfg)
+	metrics.Register(func() float64 { return float64(len(s.Aliases())) })
 
 	auth := server.AuthConfig{
 		Username: getEnv("GOKU_ADMIN_USERNAME", "admin"),
@@ -77,37 +79,15 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		APIKey:   getEnv("GOKU_API_KEY", ""),
 	}
 
-	// Priority: env var > key file > generate new key
-	keyPath := filepath.Join(filepath.Dir(configPath), ".api_key")
-	switch {
-	case auth.APIKey != "":
-		logger.Info("using API key from environment")
-	default:
-		if data, err := os.ReadFile(keyPath); err == nil {
-			if key := strings.TrimSpace(string(data)); key != "" {
-				auth.APIKey = key
-				logger.Info("using API key from file", "path", keyPath)
-			}
-		}
-		if auth.APIKey == "" {
-			b := make([]byte, 24)
-			if _, err := rand.Read(b); err != nil {
-				return fmt.Errorf("generating API key: %w", err)
-			}
-			auth.APIKey = hex.EncodeToString(b)
-			if err := os.WriteFile(keyPath, []byte(auth.APIKey+"\n"), 0600); err != nil {
-				return fmt.Errorf("saving API key file: %w", err)
-			}
-			logger.Info("generated and saved new API key", "path", keyPath)
-		}
+	auth.APIKey, err = loadAPIKey(configPath, auth.APIKey, logger)
+	if err != nil {
+		return err
 	}
-	logger.Info("API key", "key", auth.APIKey)
 
 	if auth.Password == "" {
 		logger.Warn("GOKU_ADMIN_PASSWORD not set - admin UI login is disabled")
 	}
 
-	s := store.New(cfg)
 	publicSrv := server.NewPublic(s, logger)
 	adminSrv := server.NewAdmin(s, logger, configPath, auth)
 	adminSrv.SetPublicBaseURL(getEnv("GOKU_PUBLIC_BASE_URL", ""))
@@ -138,7 +118,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			"version", version,
 			"commit", commit,
 		)
-		if err := apiHTTPServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := apiHTTPServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
@@ -150,7 +130,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 			"version", version,
 			"commit", commit,
 		)
-		if err := adminHTTPServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := adminHTTPServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 		return nil
@@ -165,13 +145,60 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		logger.Info("shutting down...")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if err := apiHTTPServer.Shutdown(shutdownCtx); err != nil {
-			return err
-		}
-		return adminHTTPServer.Shutdown(shutdownCtx)
+		return shutdownAll(shutdownCtx, apiHTTPServer.Shutdown, adminHTTPServer.Shutdown)
 	})
 
 	return g.Wait()
+}
+
+func loadAPIKey(configPath, configured string, logger *slog.Logger) (string, error) {
+	if configured != "" {
+		logger.Info("using API key from environment")
+		return configured, nil
+	}
+
+	keyPath := filepath.Join(filepath.Dir(configPath), ".api_key")
+	data, err := os.ReadFile(keyPath)
+	if err == nil {
+		if key := strings.TrimSpace(string(data)); key != "" {
+			logger.Info("using API key from file", "path", keyPath)
+			return key, nil
+		}
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("reading API key file: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(keyPath), 0755); err != nil {
+		return "", fmt.Errorf("creating config directory: %w", err)
+	}
+	keyBytes := make([]byte, 24)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return "", fmt.Errorf("generating API key: %w", err)
+	}
+	key := hex.EncodeToString(keyBytes)
+	if err := os.WriteFile(keyPath, []byte(key+"\n"), 0600); err != nil {
+		return "", fmt.Errorf("saving API key file: %w", err)
+	}
+	if err := os.Chmod(keyPath, 0600); err != nil {
+		return "", fmt.Errorf("securing API key file: %w", err)
+	}
+	logger.Info("generated API key; read it from the key file",
+		"path", keyPath,
+		"permissions", "0600",
+	)
+	return key, nil
+}
+
+func shutdownAll(ctx context.Context, shutdowns ...func(context.Context) error) error {
+	errs := make([]error, len(shutdowns))
+	var wg sync.WaitGroup
+	for i, shutdown := range shutdowns {
+		wg.Go(func() {
+			errs[i] = shutdown(ctx)
+		})
+	}
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 func getEnv(key, fallback string) string {

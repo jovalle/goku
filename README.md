@@ -5,7 +5,7 @@
   <p><em>Enlightenment (悟 → `go`) through the (homelab) void (空 → `ku`)</em></p>
   <p>Self-hosted golinks written in Go.</p>
 
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/jovalle/goku/actions/workflows/ci.yml/badge.svg)](https://github.com/jovalle/goku/actions/workflows/ci.yml)
 [![Docker Workflow](https://github.com/jovalle/goku/actions/workflows/docker.yml/badge.svg)](https://github.com/jovalle/goku/actions/workflows/docker.yml)
@@ -193,6 +193,9 @@ Set `GOKU_ADMIN_PASSWORD` to require a login for the admin UI. The API accepts t
 Without `GOKU_ADMIN_PASSWORD`, the admin UI is open. You can still protect API endpoints with a bearer key.
 
 The API key is generated on first run and stored at `config/.api_key` if not supplied via `GOKU_API_KEY`.
+The generated file uses `0600` permissions. Startup logs report where the key came from, but never print its value.
+
+Import and import-preview requests are limited to 1 MiB. Alias status checks send `HEAD` or ranged `GET` requests from the goku host to configured destinations, including private and loopback addresses. Treat access to the admin API as permission to make these probes, and do not expose the admin port to untrusted users.
 
 ## Development
 

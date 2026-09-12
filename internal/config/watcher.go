@@ -37,6 +37,12 @@ func Watch(ctx context.Context, path string, updater Updater, logger *slog.Logge
 	}
 
 	var debounceTimer *time.Timer
+	var debounce <-chan time.Time
+	defer func() {
+		if debounceTimer != nil {
+			debounceTimer.Stop()
+		}
+	}()
 
 	for {
 		select {
@@ -55,13 +61,23 @@ func Watch(ctx context.Context, path string, updater Updater, logger *slog.Logge
 			}
 
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
-				if debounceTimer != nil {
-					debounceTimer.Stop()
+				if debounceTimer == nil {
+					debounceTimer = time.NewTimer(100 * time.Millisecond)
+				} else {
+					if !debounceTimer.Stop() {
+						select {
+						case <-debounceTimer.C:
+						default:
+						}
+					}
+					debounceTimer.Reset(100 * time.Millisecond)
 				}
-				debounceTimer = time.AfterFunc(100*time.Millisecond, func() {
-					reload(path, updater, logger)
-				})
+				debounce = debounceTimer.C
 			}
+
+		case <-debounce:
+			reload(path, updater, logger)
+			debounce = nil
 
 		case err, ok := <-watcher.Errors:
 			if !ok {

@@ -9,6 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/jovalle/goku/internal/config"
+	"github.com/jovalle/goku/internal/model"
 	"github.com/jovalle/goku/internal/store"
 )
 
@@ -23,7 +25,6 @@ type AuthConfig struct {
 type Server struct {
 	store         *store.AliasStore
 	logger        *slog.Logger
-	configPath    string
 	auth          AuthConfig
 	publicBase    string
 	mode          string
@@ -61,10 +62,14 @@ func (s *Server) SetPublicBaseURL(raw string) {
 }
 
 func newWithMode(s *store.AliasStore, logger *slog.Logger, configPath string, auth AuthConfig, mode string) *Server {
+	if configPath != "" {
+		s.SetPersistence(func(cfg model.Config) error {
+			return config.Save(configPath, cfg)
+		})
+	}
 	srv := &Server{
 		store:         s,
 		logger:        logger,
-		configPath:    configPath,
 		auth:          auth,
 		mode:          mode,
 		mux:           http.NewServeMux(),
