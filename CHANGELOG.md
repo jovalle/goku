@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1](https://github.com/jovalle/goku/compare/v1.6.0...v1.6.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* resolve aliases with placeholder defaults ([d324aad](https://github.com/jovalle/goku/commit/d324aad7208412a979cccbc0653e6e02aceb85b6))
+* warn only for ambiguous alias overlaps ([3fdade3](https://github.com/jovalle/goku/commit/3fdade333c30f474268b09a8d65f757e44a69e72))
+
 ## [1.6.0](https://github.com/jovalle/goku/compare/v1.5.0...v1.6.0) (2026-07-14)
 
 
