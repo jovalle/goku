@@ -97,6 +97,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
 	s.mux.HandleFunc("GET /static/favicon.png", s.handleFavicon)
 	s.mux.HandleFunc("GET /static/logo.png", s.handleLogo)
+	s.mux.HandleFunc("GET /static/logo-dark.png", s.handleLogoDark)
 
 	switch s.mode {
 	case modePublic:

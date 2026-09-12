@@ -40,13 +40,17 @@ Golinks are increasingly commonplace in corporate environments (so much so one m
 
 2. Open the apps:
    - Public endpoint: `http://localhost:9000`
+![Public Endpoint](.github/assets/public.png)
    - Admin panel: `http://localhost:9001`
+![Admin Panel](.github/assets/panel.png)
 
 3. To require an admin login, set a password:
 
 ```bash
 GOKU_ADMIN_PASSWORD=my-secret just run
 ```
+
+![Login](.github/assets/login.png)
 
 Without `GOKU_ADMIN_PASSWORD`, the admin UI is open and does not show a logout button.
 

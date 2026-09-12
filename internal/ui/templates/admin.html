@@ -45,22 +45,41 @@
       }
 
       .theme-toggle {
-        bottom: 1rem;
-        position: fixed;
-        right: 1rem;
-        top: auto;
-        z-index: 1050;
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        flex: 0 0 2.75rem;
+        height: 2.75rem;
+        justify-content: center;
+        padding: 0.0625rem;
+        width: 2.75rem;
       }
 
-      .theme-toggle .theme-icon-light {
+      .theme-toggle:hover {
+        opacity: 0.8;
+      }
+
+      .theme-toggle:focus-visible {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+        outline: 0;
+      }
+
+      .theme-toggle img {
+        height: 2.625rem;
+        width: 2.625rem;
+      }
+
+      .theme-toggle .theme-logo-dark {
         display: none;
       }
 
-      [data-bs-theme='dark'] .theme-toggle .theme-icon-dark {
+      [data-bs-theme='dark'] .theme-toggle .theme-logo-light {
         display: none;
       }
 
-      [data-bs-theme='dark'] .theme-toggle .theme-icon-light {
+      [data-bs-theme='dark'] .theme-toggle .theme-logo-dark {
         display: block;
       }
 
@@ -642,7 +661,16 @@
     <main class="container py-4">
       <header class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
-          <img src="/static/logo.png" alt="goku" width="42" height="42" />
+          <button
+            type="button"
+            class="theme-toggle"
+            data-theme-toggle
+            aria-label="Switch to dark mode"
+            title="Switch to dark mode"
+          >
+            <img class="theme-logo-light" src="/static/logo.png" alt="" width="42" height="42" />
+            <img class="theme-logo-dark" src="/static/logo-dark.png" alt="" width="42" height="42" />
+          </button>
           <div>
             <h1 class="h4 mb-0">Goku</h1>
             <div class="header-stats" aria-label="Golink stats">
@@ -667,29 +695,6 @@
           </div>
         </div>
         <div class="header-actions d-flex gap-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-symbol theme-toggle"
-            data-theme-toggle
-            aria-label="Switch to dark mode"
-            title="Switch to dark mode"
-          >
-            <svg class="theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
-              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
-            </svg>
-            <svg class="theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="4" />
-              <path d="M12 2v2" />
-              <path d="M12 20v2" />
-              <path d="m4.93 4.93 1.41 1.41" />
-              <path d="m17.66 17.66 1.41 1.41" />
-              <path d="M2 12h2" />
-              <path d="M20 12h2" />
-              <path d="m6.34 17.66-1.41 1.41" />
-              <path d="m19.07 4.93-1.41 1.41" />
-            </svg>
-            <span class="visually-hidden">Toggle dark mode</span>
-          </button>
           <button
             class="btn btn-primary btn-symbol add-alias-button"
             type="button"

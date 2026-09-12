@@ -826,6 +826,11 @@ func (s *Server) handleLogo(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(ui.Logo)
 }
 
+func (s *Server) handleLogoDark(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	_, _ = w.Write(ui.LogoDark)
+}
+
 func (s *Server) handleFavicon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "public, max-age=86400")

@@ -27,71 +27,62 @@
       }
 
       .theme-toggle {
-        bottom: 1rem;
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        flex: 0 0 2.75rem;
         height: 2.5rem;
-        position: fixed;
-        right: 1rem;
-        top: auto;
+        justify-content: center;
+        padding: 0;
+        width: 2.75rem;
+      }
+
+      .theme-toggle:hover {
+        opacity: 0.8;
+      }
+
+      .theme-toggle:focus-visible {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+        outline: 0;
+      }
+
+      .theme-toggle img {
+        height: 2.5rem;
         width: 2.5rem;
-        z-index: 1050;
       }
 
-      .theme-toggle svg {
-        height: 1.1rem;
-        width: 1.1rem;
-      }
-
-      .theme-toggle .theme-icon-light {
+      .theme-toggle .theme-logo-dark {
         display: none;
       }
 
-      [data-bs-theme='dark'] .theme-toggle .theme-icon-dark {
+      [data-bs-theme='dark'] .theme-toggle .theme-logo-light {
         display: none;
       }
 
-      [data-bs-theme='dark'] .theme-toggle .theme-icon-light {
-        display: inline-block;
-      }
-
-      @media (max-width: 767.98px) {
-        .theme-toggle {
-          bottom: auto;
-          top: 1rem;
-        }
+      [data-bs-theme='dark'] .theme-toggle .theme-logo-dark {
+        display: block;
       }
     </style>
   </head>
   <body class="bg-body-tertiary">
-    <button
-      type="button"
-      class="btn btn-outline-secondary theme-toggle d-inline-flex align-items-center justify-content-center p-0"
-      data-theme-toggle
-      aria-label="Switch to dark mode"
-      title="Switch to dark mode"
-    >
-      <svg class="theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
-        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />
-      </svg>
-      <svg class="theme-icon-light" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2" />
-        <path d="M12 20v2" />
-        <path d="m4.93 4.93 1.41 1.41" />
-        <path d="m17.66 17.66 1.41 1.41" />
-        <path d="M2 12h2" />
-        <path d="M20 12h2" />
-        <path d="m6.34 17.66-1.41 1.41" />
-        <path d="m19.07 4.93-1.41 1.41" />
-      </svg>
-      <span class="visually-hidden">Toggle dark mode</span>
-    </button>
     <main class="container min-vh-100 d-flex align-items-center py-3">
       <div class="row justify-content-center w-100">
         <section class="col-12 col-sm-10 col-md-5 col-lg-4">
           <div class="card shadow-sm">
             <div class="card-body p-3">
               <div class="d-flex align-items-center gap-2 mb-2">
-                <img src="/static/logo.png" alt="goku logo" width="40" height="40" />
+                <button
+                  type="button"
+                  class="theme-toggle"
+                  data-theme-toggle
+                  aria-label="Switch to dark mode"
+                  title="Switch to dark mode"
+                >
+                  <img class="theme-logo-light" src="/static/logo.png" alt="" width="40" height="40" />
+                  <img class="theme-logo-dark" src="/static/logo-dark.png" alt="" width="40" height="40" />
+                </button>
                 <h1 class="h4 mb-0">Goku</h1>
               </div>
               <div class="list-group">

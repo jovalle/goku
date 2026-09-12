@@ -34,6 +34,22 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
+func assertLogoThemeToggle(t *testing.T, body string) {
+	t.Helper()
+	for _, expected := range []string{
+		"data-theme-toggle",
+		`src="/static/logo.png"`,
+		`src="/static/logo-dark.png"`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Errorf("expected logo theme toggle containing %q", expected)
+		}
+	}
+	if strings.Contains(body, "theme-icon-") {
+		t.Error("expected logo theme toggle without legacy sun or moon icons")
+	}
+}
+
 func newTestServers(t *testing.T, cfg model.Config, auth AuthConfig) testServers {
 	t.Helper()
 
@@ -207,29 +223,32 @@ func TestPublicLandingPage(t *testing.T) {
 	if !strings.Contains(body, "<h1 class=\"h4 mb-0\">Goku</h1>") || !strings.Contains(body, "golinks defined") {
 		t.Fatalf("expected public landing page containing brand and golink count, body = %q", body)
 	}
+	assertLogoThemeToggle(t, body)
 }
 
-func TestLogoServedFromStaticRoute(t *testing.T) {
+func TestLogosServedFromStaticRoutes(t *testing.T) {
 	srvs := newTestServers(t, model.Config{}, AuthConfig{})
 	for name, srv := range map[string]*Server{
 		"admin":  srvs.admin,
 		"public": srvs.public,
 	} {
-		t.Run(name, func(t *testing.T) {
-			req := httptest.NewRequest("GET", "/static/logo.png", nil)
-			w := httptest.NewRecorder()
-			srv.ServeHTTP(w, req)
+		for _, logoPath := range []string{"/static/logo.png", "/static/logo-dark.png"} {
+			t.Run(name+logoPath, func(t *testing.T) {
+				req := httptest.NewRequest("GET", logoPath, nil)
+				w := httptest.NewRecorder()
+				srv.ServeHTTP(w, req)
 
-			if w.Code != http.StatusOK {
-				t.Fatalf("status = %d, want 200", w.Code)
-			}
-			if ct := w.Header().Get("Content-Type"); ct != "image/png" {
-				t.Fatalf("content-type = %q, want image/png", ct)
-			}
-			if w.Body.Len() == 0 {
-				t.Fatal("expected logo bytes in response body")
-			}
-		})
+				if w.Code != http.StatusOK {
+					t.Fatalf("status = %d, want 200", w.Code)
+				}
+				if ct := w.Header().Get("Content-Type"); ct != "image/png" {
+					t.Fatalf("content-type = %q, want image/png", ct)
+				}
+				if w.Body.Len() == 0 {
+					t.Fatal("expected logo bytes in response body")
+				}
+			})
+		}
 	}
 }
 
@@ -272,6 +291,7 @@ func TestAdminLandingPage(t *testing.T) {
 	if !strings.Contains(body, "Goku") {
 		t.Fatalf("expected admin page containing 'Goku', body = %q", body)
 	}
+	assertLogoThemeToggle(t, body)
 	if strings.Contains(body, "Log out") {
 		t.Fatalf("admin page should not show logout without password auth, body = %q", body)
 	}
@@ -385,6 +405,7 @@ func TestAdminLoginPageShownWhenPasswordConfigured(t *testing.T) {
 	if !strings.Contains(body, "Keep me logged in") {
 		t.Fatalf("expected login page, body = %q", w.Body.String())
 	}
+	assertLogoThemeToggle(t, body)
 }
 
 func TestSwaggerPage(t *testing.T) {
@@ -513,6 +534,7 @@ func TestHandleRedirect_NotFound(t *testing.T) {
 	if !strings.Contains(w.Body.String(), "/nosuch") {
 		t.Fatalf("expected query-not-found page, body = %q", w.Body.String())
 	}
+	assertLogoThemeToggle(t, w.Body.String())
 }
 
 func TestPublicServerDoesNotExposeAdminAPI(t *testing.T) {
@@ -1058,6 +1080,7 @@ func TestHandleAliasPreview(t *testing.T) {
 	if !strings.Contains(body, "https://github.com") {
 		t.Fatalf("expected resolved destination in page, body = %q", body)
 	}
+	assertLogoThemeToggle(t, body)
 }
 
 func TestHandleAliasPreview_StripsPlaceholderValues(t *testing.T) {
