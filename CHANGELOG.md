@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/jovalle/goku/compare/v1.6.1...v1.7.0) (2026-09-12)
+
+
+### Features
+
+* **ui:** add dark mode support with new logo assets and theme toggle ([a085fbe](https://github.com/jovalle/goku/commit/a085fbe1bb7369324e239fcd9eddb4021b13f110))
+
 ## [1.6.1](https://github.com/jovalle/goku/compare/v1.6.0...v1.6.1) (2026-09-12)
 
 
