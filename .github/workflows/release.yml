@@ -23,7 +23,7 @@ jobs:
       tag_name: ${{ steps.release-after-merge.outputs.tag_name || steps.release.outputs.tag_name }}
       version: ${{ steps.release-after-merge.outputs.version || steps.release.outputs.version }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           release-type: go
@@ -49,7 +49,7 @@ jobs:
           gh pr merge "$pr_number" --merge
           echo "merged=true" >> "$GITHUB_OUTPUT"
 
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release-after-merge
         if: steps.merge.outputs.merged == 'true'
         with:
@@ -65,11 +65,11 @@ jobs:
         goos: [linux, darwin]
         goarch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.27.0"
           cache: true
